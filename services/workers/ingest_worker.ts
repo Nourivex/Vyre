@@ -16,22 +16,35 @@ function chunkText(text: string, chunkSize = 1000, overlap = 200) {
     const end = Math.min(start + chunkSize, text.length);
     const piece = text.slice(start, end);
     chunks.push({ start, end, text: piece });
+    // If we've reached the end of the text, stop to avoid repeating the last chunk.
+    if (end >= text.length) break;
     start = end - overlap;
     if (start < 0) start = 0;
-    if (start >= text.length) break;
   }
   return chunks;
 }
 
-export async function runIngestWorker(queuePath?: string) {
+export async function runIngestWorker(queuePath?: string, once = false) {
   const queue = new SQLiteQueue(queuePath);
   const dbPath = getDbPath();
   const db = new Database(dbPath);
 
-  // Poll loop
-  setInterval(() => {
+  // Helper to process a single job iteration
+  const processNext = () => {
     const job = queue.reserveNext();
     if (!job) return;
+
+    // Only handle ingest jobs here. If another job type was reserved, restore to queued so the
+    // appropriate worker can pick it up.
+    if (job.type !== 'ingest') {
+      const now = new Date().toISOString();
+      try {
+        queue.db.prepare('UPDATE jobs SET status=?, updated_at=? WHERE id=?').run('queued', now, job.id);
+      } catch (e) {
+        // best-effort
+      }
+      return;
+    }
     try {
       console.log('Ingest worker: processing', job.job_id, job.type);
       const payload = job.payload ? JSON.parse(job.payload) : {};
@@ -75,10 +88,11 @@ export async function runIngestWorker(queuePath?: string) {
         }
 
         // enqueue embed job for this document's chunks
-        if (chunkIds.length > 0) {
-          const embedJobId = makeId('job');
-          embedQueue.enqueue({ jobId: embedJobId, type: 'embed', payload: { collection_id: collectionId, chunk_ids: chunkIds, model: payload.options?.embed_model || 'ollama' } });
-        }
+          if (chunkIds.length > 0) {
+            const embedJobId = makeId('job');
+            const embedModel = payload.options?.embed_model || payload.options?.model || undefined;
+            embedQueue.enqueue({ jobId: embedJobId, type: 'embed', payload: { collection_id: collectionId, chunk_ids: chunkIds, model: embedModel } });
+          }
       }
 
       // mark ingest job done
@@ -88,5 +102,14 @@ export async function runIngestWorker(queuePath?: string) {
       console.error('Ingest worker error', err);
       // TODO: update job attempts and last_error
     }
-  }, 1000);
+  };
+
+  if (once) {
+    // run single iteration and return
+    processNext();
+    return;
+  }
+
+  // Poll loop
+  setInterval(processNext, 1000);
 }

@@ -1,0 +1,61 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# TypeScript build
+dist/
+build/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+*.code-workspace
+
+# Logs
+logs/
+*.log
+
+# Databases and local state
+database/
+*.sqlite
+*.db
+services/database/
+services/config.json
+
+# Ollama local artifacts
+.ollama/
+
+# Misc
+*.tgz
+.cache/
+node_modules/
+services/node_modules/
+database/vyre.db
+*.log
+.env
+.env.*
+dist/
+.DS_Store
+.vscode/
+.idea/
+*.sqlite
+*.db
+coverage/
+*.tgz
+/.nyc_output
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.cache/
+/*.local
