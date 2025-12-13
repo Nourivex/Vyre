@@ -1,10 +1,12 @@
-# Vyre — Local AI Backend
+# Vyre — Local AI App (backend + UI)
 
-A compact, local-first AI backend for ingestion, vector search, and model-backed chat.
+Vyre is a local-first AI application: a backend for ingestion, embeddings and vector search, plus a browser-based UI for chat, history, agent selection, and knowledge-base management.
 
 ## What is this
 - Vyre is a development-focused backend that lets you ingest text, build embeddings, perform vector search, and run model-backed chat locally using Ollama.
 - Built for privacy and fast experimentation — everything can run on your machine with SQLite storage and local model runtimes.
+- Vyre now includes a static frontend served from `services/public/app` which provides a Chat UI, conversation history sidebar, Agent selector (personas), Ollama status, and knowledge-base (collections) controls.
+ - The root URL (`/`) serves the interactive app; static assets are under `/static/*`.
 
 ## Goals
 - Provide a minimal, secure local stack for RAG (retrieval-augmented generation).
@@ -20,6 +22,7 @@ A compact, local-first AI backend for ingestion, vector search, and model-backed
   - Robust `call_model` helper: HTTP first, CLI fallback, stdin support
   - OpenAPI (`/openapi.json`), ReDoc (`/docs`) and interactive Swagger UI (`/swagger`)
   - Smoke & integration tests; CORS for browser Try-it
+   - Static browser UI (Chat + sidebar) served from `services/public/app`
 - Remaining / optional:
   - Additional robust production configs (persisted secrets, external vector stores)
   - CI model-run steps require secrets for running live model smoke tests
@@ -42,6 +45,18 @@ npx ts-node dev-runner.ts
 ```
 
 Server defaults to http://127.0.0.1:3000
+
+4. Open the app UI in your browser:
+
+```
+http://127.0.0.1:3000
+```
+
+The UI includes:
+- Conversation list (sidebar) with search and +New
+- Agent selector (persona) which maps to a model for new conversations
+- Ollama status indicator and model list
+- Knowledge Base / Collections selector with Upload button to POST to `/ingest`
 
 3. Try endpoints
 - Open API docs: http://127.0.0.1:3000/docs
@@ -75,6 +90,8 @@ set DISABLE_MODEL_CALL=1&& npx ts-node test/chat-integration.test.ts
 
 ## Files of interest
 - `services/api/index.ts` — main HTTP API & docs
+ - `services/api/index.ts` — main HTTP API & docs (also serves static UI under `/`)
+ - `services/public/app` — static frontend (HTML/CSS/JS) for the interactive chat UI
 - `services/tools/call_model.ts` — model caller (HTTP + CLI + stdin fallback)
 - `services/embeddings/adapter_ollama.ts` — embedding adapter
 - `services/vector/adapter_sqlite_vec.ts` — vector store

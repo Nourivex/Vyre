@@ -106,6 +106,29 @@ Catatan:
 6. Tambah CI workflow untuk menjalankan `npm test` dan `npm run smoke`.
 7. Implementasi UI Tauri (model selector, chat view, history view).
 
+## Tujuan Baru — UI Sidebar & Presentation (2025-12-13)
+
+Tambahan tujuan yang harus dikerjakan setelah refactor UI terbaru:
+
+- Perbaiki tampilan respons chat: bila backend mengembalikan objek/JSON, antarmuka chat hanya menampilkan bagian teks respons (mis. `response.text` atau `response.output`) bukan merender seluruh objek JSON mentah. Ini meningkatkan keterbacaan dan pengalaman pengguna.
+- Perbaikan tema/warna: highlight/kondisi `selected` pada dropdown `Agent` dan `Knowledge Base` perlu penyesuaian — gunakan warna aksen yang kontras (variabel `--accent`) dan padding/border yang konsisten agar pilihan terlihat jelas di tema gelap maupun terang.
+- Sidebar: masukkan daftar `conversations` yang dapat dicari, tombol `+ New` untuk membuat percakapan, serta sinkronisasi `agent` → `model` ketika user memilih Agent sehingga percakapan baru otomatis menggunakan konfigurasi Agent tersebut.
+- Ollama status: tampilkan indikator status yang merefleksikan hasil pemeriksaan `services/tools/check_ollama.ts` atau endpoint `/models`. Jika Ollama mati, tampilkan fallback message dan gunakan pseudo-embed atau matikan pemanggilan model.
+- Knowledge Base (Collections): tampilkan dropdown collections dan tombol Upload untuk men-trigger `/ingest`. Pilihan collection harus diteruskan ke endpoint `/chat` sebagai `collection_id` untuk retrieval.
+
+Implementasi kecil yang direkomendasikan:
+
+- Backend: tambahkan endpoint CRUD untuk `/agents`, `/conversations`, `/collections` dan endpoint `GET /conversations/:id/messages`.
+- Frontend: parsing respons model di `pages/chat.js` agar menampilkan `response` yang relevan (prioritaskan `response.text`, `response.output`, lalu fallback ke `JSON.stringify` kecil).
+- Styling: update `services/public/app/app.css` untuk variabel warna `--accent-selected` dan class `.selected` pada dropdown/options.
+
+Setelah langkah ini, jalankan smoke-test end-to-end untuk memastikan:
+
+- Pilihan Agent memicu penggunaan model yang sesuai.
+- Upload dokumen memicu `/ingest` dan koleksi muncul di dropdown.
+- Chat menampilkan teks jawaban yang bersih.
+
+
 ## Cara Menjalankan (Dev)
 - Jalankan migrasi dan server:
 
