@@ -393,91 +393,119 @@ export function createServer(opts = {}) {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Vyre Chat</title>
+  <title>Vyre — Interface</title>
   <style>
-    :root{--bg:#0b1220;--panel:#0f1726;--muted:#9aa4b2;--accent:#7c3aed;--text:#e6eef6}
-    .light{--bg:#f7fafc;--panel:#ffffff;--muted:#6b7280;--accent:#6366f1;--text:#0b1220}
+    :root{--bg:#07111a;--surface:#0b1220;--panel:#0f1726;--muted:#9aa4b2;--accent:#7c3aed;--text:#e6eef6}
+    .light{--bg:#f7fafc;--surface:#ffffff;--panel:#f8fafc;--muted:#6b7280;--accent:#6366f1;--text:#0b1220}
     html,body{height:100%;margin:0;font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(180deg,var(--bg),#07111a);color:var(--text)}
-    .app{max-width:980px;margin:28px auto;padding:18px}
-    .header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
-    .title{font-size:20px;font-weight:600}
+    .layout{display:flex;height:100vh}
+    .sidebar{width:260px;background:var(--surface);border-right:1px solid rgba(255,255,255,0.03);padding:18px;box-sizing:border-box}
+    .brand{font-weight:700;font-size:18px;margin-bottom:12px}
+    .nav{display:flex;flex-direction:column;gap:8px}
+    .nav button{background:transparent;border:0;color:var(--text);padding:8px 10px;text-align:left;border-radius:8px;cursor:pointer}
+    .nav button.active{background:linear-gradient(90deg,var(--accent),#3b82f6);color:#fff}
+    .content{flex:1;display:flex;flex-direction:column;padding:18px;box-sizing:border-box}
+    .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
     .controls{display:flex;gap:8px;align-items:center}
-    .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 10px;border-radius:8px;color:var(--text);cursor:pointer}
-    .btn.primary{background:linear-gradient(90deg,var(--accent),#3b82f6);border:0}
-    .panel{background:var(--panel);border-radius:12px;padding:12px;height:60vh;display:flex;flex-direction:column;gap:12px;box-shadow:0 6px 24px rgba(2,6,23,0.6)}
+    .panel{flex:1;background:var(--panel);border-radius:12px;padding:14px;box-shadow:0 8px 30px rgba(2,6,23,0.6);display:flex;flex-direction:column}
+    /* Chat area */
     .messages{flex:1;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:10px}
     .msg{max-width:78%;padding:10px;border-radius:10px;line-height:1.4}
     .msg.user{align-self:flex-end;background:rgba(255,255,255,0.06)}
     .msg.assistant{align-self:flex-start;background:rgba(0,0,0,0.12)}
-    .composer{display:flex;gap:8px}
+    .composer{display:flex;gap:8px;margin-top:10px}
     .input{flex:1;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--text)}
-    .meta{font-size:12px;color:var(--muted)}
-    @media (max-width:640px){.app{margin:12px}}
+    .btn{padding:8px 12px;border-radius:8px;border:0;cursor:pointer}
+    .btn.primary{background:linear-gradient(90deg,var(--accent),#3b82f6);color:#fff}
+    .muted{font-size:12px;color:var(--muted)}
+    @media (max-width:900px){.sidebar{display:none}.layout{flex-direction:column}.content{padding:12px}}
   </style>
 </head>
 <body>
-  <div id="root" class="app">
-    <div class="header">
-      <div>
-        <div class="title">Vyre — Chat</div>
-        <div class="meta">Local AI backend — retrieval-augmented chat</div>
-      </div>
-      <div class="controls">
-        <select id="modelSelect" class="btn" aria-label="Model">
-          <option value="gemma3:4b">gemma3:4b</option>
-        </select>
-        <button id="themeBtn" class="btn">Toggle Theme</button>
-      </div>
-    </div>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">Vyre — Local AI</div>
+      <div class="muted">Run locally · private · fast</div>
+      <nav class="nav" style="margin-top:18px">
+        <button data-page="chat" class="active">Chat</button>
+        <button data-page="docs">Docs</button>
+        <button data-page="settings">Settings</button>
+      </nav>
+      <div style="margin-top:20px" class="muted">Model</div>
+      <select id="modelSelect" style="width:100%;margin-top:8px;padding:8px;border-radius:8px;background:transparent;color:var(--text);border:1px solid rgba(255,255,255,0.04)">
+        <option value="gemma3:4b">gemma3:4b</option>
+      </select>
+      <div style="margin-top:12px"><button id="themeBtn" class="btn" style="width:100%">Toggle Theme</button></div>
+    </aside>
 
-    <div class="panel">
-      <div id="messages" class="messages"></div>
-      <form id="frm" class="composer">
-        <input id="txt" class="input" placeholder="Write a message..." autocomplete="off" />
-        <button type="submit" class="btn primary">Send</button>
-      </form>
-    </div>
+    <main class="content">
+      <div class="header">
+        <div style="font-weight:600">Vyre — Interface</div>
+        <div class="controls muted">Local · <span id="version">v0.1.0</span></div>
+      </div>
+
+      <div id="pageContainer" class="panel">
+        <!-- Chat page (default) -->
+        <div id="page-chat" class="page" style="display:block;flex:1;">
+          <div id="messages" class="messages"></div>
+          <form id="frm" class="composer">
+            <input id="txt" class="input" placeholder="Write a message..." autocomplete="off" />
+            <button type="submit" class="btn primary">Send</button>
+          </form>
+        </div>
+
+        <div id="page-docs" class="page" style="display:none;">
+          <div class="muted">API docs</div>
+          <iframe src="/docs" style="border:0;width:100%;height:100%;margin-top:8px;border-radius:8px"></iframe>
+        </div>
+
+        <div id="page-settings" class="page" style="display:none;">
+          <div class="muted">Settings</div>
+          <div style="margin-top:8px">Environment variables and runtime options can be shown here.</div>
+        </div>
+      </div>
+    </main>
   </div>
 
   <script>
-    const root = document.getElementById('root');
+    // UI: page switcher and theme
+    const navBtns = document.querySelectorAll('.nav button');
+    const pages = document.querySelectorAll('.page');
+    navBtns.forEach(b=> b.addEventListener('click', ()=>{
+      navBtns.forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      const p = b.getAttribute('data-page');
+      pages.forEach(pg=> pg.style.display = pg.id === 'page-'+p ? 'block' : 'none');
+    }));
+
+    const themeBtn = document.getElementById('themeBtn');
+    function setTheme(t){ if(t==='light') document.documentElement.classList.add('light'); else document.documentElement.classList.remove('light'); localStorage.setItem('vyre_theme', t); }
+    setTheme(localStorage.getItem('vyre_theme') || 'dark');
+    themeBtn.addEventListener('click', ()=> setTheme(document.documentElement.classList.contains('light') ? 'dark' : 'light'));
+
+    // Chat behavior
     const messagesEl = document.getElementById('messages');
     const txt = document.getElementById('txt');
     const frm = document.getElementById('frm');
-    const themeBtn = document.getElementById('themeBtn');
     const modelSelect = document.getElementById('modelSelect');
 
-    function appendMsg(role, text){
-      const d = document.createElement('div');
-      d.className = 'msg ' + (role==='user' ? 'user' : 'assistant');
-      d.textContent = text;
-      messagesEl.appendChild(d);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-    }
-
-    function setTheme(t){
-      if(t==='light') document.documentElement.classList.add('light'); else document.documentElement.classList.remove('light');
-      localStorage.setItem('vyre_theme', t);
-    }
-    const saved = localStorage.getItem('vyre_theme') || 'dark'; setTheme(saved);
-    themeBtn.addEventListener('click', ()=> setTheme(document.documentElement.classList.contains('light') ? 'dark' : 'light'));
+    function appendMsg(role, text){ const d = document.createElement('div'); d.className = 'msg '+(role==='user'?'user':'assistant'); d.textContent = text; messagesEl.appendChild(d); messagesEl.scrollTop = messagesEl.scrollHeight; }
 
     frm.addEventListener('submit', async (e)=>{
-      e.preventDefault();
-      const v = txt.value.trim(); if(!v) return;
-      appendMsg('user', v); txt.value='';
-      appendMsg('assistant', '...');
+      e.preventDefault(); const v = txt.value.trim(); if(!v) return; appendMsg('user', v); txt.value=''; appendMsg('assistant', '...');
       try{
-        const res = await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'user',content:v,model:modelSelect.value})});
+        const res = await fetch('/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ role:'user', content: v, model: modelSelect.value }) });
         const j = await res.json();
-        // replace last assistant '...' with actual response
         const last = messagesEl.querySelectorAll('.msg.assistant');
         if(last.length) last[last.length-1].textContent = j.response || j.error || JSON.stringify(j);
-      }catch(err){
-        const last = messagesEl.querySelectorAll('.msg.assistant');
-        if(last.length) last[last.length-1].textContent = 'Error: ' + String(err.message || err);
-      }
+      }catch(err){ const last = messagesEl.querySelectorAll('.msg.assistant'); if(last.length) last[last.length-1].textContent = 'Error: '+String(err.message||err); }
     });
+
+    // Try load models list
+    (async ()=>{
+      try{ const r = await fetch('/models'); const j = await r.json(); if(Array.isArray(j.models)){ modelSelect.innerHTML = ''; j.models.forEach(m=>{ const o = document.createElement('option'); o.value = m; o.text = m; modelSelect.appendChild(o); }); }
+    }catch(e){}
+    })();
   </script>
 </body>
 </html>`;
