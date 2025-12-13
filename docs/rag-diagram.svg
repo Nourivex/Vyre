@@ -1,0 +1,48 @@
+<svg width="900" height="380" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .box { fill:#f3f4f6; stroke:#111827; stroke-width:1; rx:8; }
+    .title { font: 600 14px/1.2 sans-serif; fill:#111827 }
+    .label { font: 400 12px/1.2 sans-serif; fill:#374151 }
+    .arrow { stroke:#6b7280; stroke-width:2; fill:none; marker-end:url(#arrowhead)}
+  </style>
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280" />
+    </marker>
+  </defs>
+
+  <!-- Boxes -->
+  <rect x="30" y="40" width="180" height="80" class="box"/>
+  <text x="40" y="64" class="title">User / App</text>
+  <text x="40" y="88" class="label">Upload document, queries</text>
+
+  <rect x="260" y="20" width="220" height="120" class="box"/>
+  <text x="280" y="44" class="title">RagExtension</text>
+  <text x="280" y="68" class="label">Chunking • Embedding • Retrieval</text>
+  <text x="280" y="92" class="label">Tool APIs (LIST/RETRIEVE/GET_CHUNKS)</text>
+
+  <rect x="520" y="40" width="240" height="80" class="box"/>
+  <text x="540" y="64" class="title">VectorDBExtension</text>
+  <text x="540" y="88" class="label">Store embeddings • ANN/linear search</text>
+
+  <rect x="260" y="170" width="220" height="80" class="box"/>
+  <text x="280" y="194" class="title">Model / LLM Engine</text>
+  <text x="280" y="218" class="label">llama.cpp • local or cloud providers</text>
+
+  <!-- Arrows -->
+  <path d="M210 80 L260 80" class="arrow" />
+  <path d="M480 80 L520 80" class="arrow" />
+  <path d="M380 140 L380 170" class="arrow" />
+  <path d="M380 250 L380 250" class="arrow" />
+
+  <!-- Labels -->
+  <text x="200" y="68" class="label">Upload</text>
+  <text x="420" y="140" class="label" text-anchor="middle">embed(query) ↔ search</text>
+
+  <!-- Flow from VectorDB to Model -->
+  <path d="M640 120 L640 170 L480 170" class="arrow" />
+  <text x="560" y="160" class="label">retrieved chunks</text>
+
+  <!-- Footer -->
+  <text x="30" y="340" class="label">Notes: chunking → embed via LLM → store embeddings → retrieval on query → augment prompt → generate</text>
+</svg>

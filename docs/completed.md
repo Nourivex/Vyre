@@ -18,6 +18,13 @@ Dokumen ini merangkum apa saja yang telah dikerjakan pada backend (lokal-first) 
 - Dokumentasi agen kustom di `.github/agents/vyre.agent.md` (diperbarui agar konfirmasi/progress pakai Bahasa Indonesia).
 - Perbaikan pada `embed_worker` untuk resolving konfigurasi model dengan aman.
 
+## Status Terbaru — 2025-12-13
+- **Smoke test:** Lulus lokal (`npm run smoke`) — pipeline ingest → embed terverifikasi.
+- **Migrasi DB:** `runMigrations()` dijalankan dan migrasi diterapkan.
+- **Pemeriksaan Ollama:** CLI tersedia (`ollama --version`), namun subcommand `embed` tidak ada; HTTP embed endpoint mengembalikan 404 pada host lokal. Adapter embedding menggunakan `run`/HTTP bila tersedia dan fallback ke pseudo-embedding bila tidak — sistem tetap dapat berjalan.
+- **Workers:** `ingest_worker` dan `embed_worker` dipanggil dalam single-run selama smoke test dan memproses job.
+- **Tes:** `npm test` (integration + vector unit) dijalankan dan lulus.
+
 ## Skema Data Percakapan (Rencana)
 Kami merekomendasikan menyimpan percakapan dengan struktur berikut:
 
@@ -36,6 +43,53 @@ Kami merekomendasikan menyimpan percakapan dengan struktur berikut:
   - `meta` JSON (sources, tokens, persona_snapshot)
 
 Skema ini memungkinkan multi-persona via `agent_id` dan snapshot persona saat pesan assistant dibuat.
+
+## Skema Tabel — Implementasi (SQL)
+Berikut skema SQL yang direkomendasikan untuk implementasi awal tabel `agents`, `conversations`, dan `messages`. Skema ini bersifat non-destruktif dan dapat ditambahkan sebagai migration SQL baru (mis. `002_add_chat_tables.sql`).
+
+```sql
+-- agents: definisi persona/agent yang dapat dipilih pengguna
+CREATE TABLE IF NOT EXISTS agents (
+  agent_id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  model TEXT DEFAULT NULL,
+  meta TEXT DEFAULT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT
+);
+
+-- conversations: kumpulan pesan untuk sesi percakapan
+CREATE TABLE IF NOT EXISTS conversations (
+  conversation_id TEXT PRIMARY KEY,
+  title TEXT,
+  agent_id TEXT REFERENCES agents(agent_id) ON DELETE SET NULL,
+  meta TEXT DEFAULT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT
+);
+
+-- messages: pesan individu dalam sebuah percakapan
+CREATE TABLE IF NOT EXISTS messages (
+  message_id TEXT PRIMARY KEY,
+  conversation_id TEXT REFERENCES conversations(conversation_id) ON DELETE CASCADE,
+  role TEXT NOT NULL,
+  content TEXT NOT NULL,
+  tokens INTEGER DEFAULT NULL,
+  metadata TEXT DEFAULT NULL,
+  created_at TEXT NOT NULL
+);
+
+-- indeks untuk query cepat
+CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_agent ON conversations(agent_id);
+```
+
+Catatan:
+- `meta` / `metadata` disimpan sebagai JSON teks, konsumen bertanggung jawab untuk serialisasi.
+- Tipe `TEXT` untuk timestamp mengikuti format ISO8601 (`new Date().toISOString()` di Node).
+- Pertimbangkan menambah kolom `parent_message_id` pada `messages` jika butuh threading/reply.
+
 
 ## Frontend — Catatan Ringkas
 - Belum ada UI Tauri lengkap; direkomendasikan membuat komponen:
@@ -74,3 +128,36 @@ npm run smoke
 
 ---
 Jika mau, saya bisa langsung membuat migrasi DB untuk `agents`/`conversations`/`messages` dan menambahkan helper API serta endpoint `/chat` — pilih langkah berikutnya dan saya lanjutkan.
+
+## CI, Migrasi & API — Panduan Singkat
+
+- CI: GitHub Actions workflow ditambahkan di `.github/workflows/ci.yml`. Workflow menjalankan `npm install`, `npm test`, dan `npm run smoke` di folder `services` pada push/PR ke `main`.
+
+- Menjalankan migrasi manual:
+
+```bash
+cd services
+npx ts-node db/migrate.ts
+```
+
+- Menjalankan smoke test lokal:
+
+```bash
+cd services
+npm run smoke
+```
+
+- Menjalankan test integrasi `/chat` (deterministik):
+
+```powershell
+cd services
+$env:DISABLE_MODEL_CALL = '1'
+npx ts-node test/chat-integration.test.ts
+```
+
+- API singkat:
+  - `POST /chat` : body `{ conversation_id?, role, content, top_k?, collection_id? }` → menyimpan pesan user, menjalankan retrieval, memanggil model (Ollama HTTP/CLI) kecuali `DISABLE_MODEL_CALL=1`, menyimpan dan mengembalikan assistant reply.
+  - `GET/POST /agents` : buat atau list agent persona.
+  - `GET/POST /conversations` : buat atau list conversations.
+
+Tambahan: CI akan menjalankan test di lingkungan Ubuntu; jika repo menambah native deps pastikan matrix/runner mendukungnya.

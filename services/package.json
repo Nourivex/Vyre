@@ -1,0 +1,17 @@
+{
+  "name": "vyre-services",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "ts-node dev-runner.ts",
+    "test": "npx ts-node test/search-integration.test.ts && npx ts-node test/vector-unit.test.ts",
+    "smoke": "ts-node test/smoke-test.ts"
+  },
+  "dependencies": {
+    "@types/node": "^25.0.1",
+    "better-sqlite3": "^12.5.0",
+    "fastify": "^5.6.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
