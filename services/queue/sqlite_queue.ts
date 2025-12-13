@@ -2,13 +2,14 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
+import { getDbPath } from '../utils/paths';
 
 export class SQLiteQueue {
   dbPath: string;
   db: any;
 
   constructor(dbPath?: string) {
-    this.dbPath = dbPath || path.join(process.env.APPDATA || '.', 'Vyre', 'vyre.db');
+    this.dbPath = dbPath || getDbPath();
     const dir = path.dirname(this.dbPath);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     this.db = new Database(this.dbPath);
