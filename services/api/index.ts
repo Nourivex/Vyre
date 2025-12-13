@@ -6,7 +6,7 @@ import { SQLiteVecAdapter } from '../vector/adapter_sqlite_vec';
 import Database from 'better-sqlite3';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
-const cfg = require('../config');
+const cfg = require('../config'); // Keep this line as is
 function getDefaultModelSafe() {
   try {
     if (typeof cfg.getDefaultModel === 'function') return cfg.getDefaultModel();
@@ -14,11 +14,33 @@ function getDefaultModelSafe() {
   } catch (e) {}
   return process.env.OLLAMA_MODEL || 'gemma3:4b';
 }
-import { callModel } from '../tools/call_model';
+const _callModelMod = require('../tools/call_model');
+const callModel: any = (_callModelMod && typeof _callModelMod.callModel === 'function') ? _callModelMod.callModel
+  : (_callModelMod && _callModelMod.default && typeof _callModelMod.default.callModel === 'function') ? _callModelMod.default.callModel
+  : (_callModelMod && typeof _callModelMod === 'function') ? _callModelMod : null;
 const execFileAsync = promisify(execFile);
 
 export function createServer(opts = {}) {
   const fastify = Fastify({ logger: false });
+
+  // Add permissive CORS headers to allow Swagger UI Try-it from browser
+  fastify.addHook('onSend', async (request, reply, payload) => {
+    try {
+      reply.header('Access-Control-Allow-Origin', '*');
+      reply.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+      reply.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+    } catch (e) {
+      // ignore
+    }
+    return payload;
+  });
+
+  fastify.options('/*', async (request, reply) => {
+    reply.header('Access-Control-Allow-Origin', '*');
+    reply.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+    reply.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+    return reply.code(204).send();
+  });
 
   fastify.get('/health', async () => ({ status: 'ok' }));
 
@@ -196,30 +218,271 @@ export function createServer(opts = {}) {
     }
   });
 
-  // OpenAPI minimal
+  // Modern OpenAPI spec and docs (servers, components, Swagger UI)
   const openapi = {
     openapi: '3.0.1',
-    info: { title: 'Vyre API', version: '0.1.0' },
+    info: { title: 'Vyre API', version: '0.1.0', description: 'Vyre local backend API' },
+    servers: [{ url: 'http://127.0.0.1:3000' }],
+    components: {
+      schemas: {
+        IngestRequest: {
+          type: 'object',
+          properties: {
+            collection_id: { type: 'string' },
+            text: { type: 'string' },
+            attachments: { type: 'array', items: { type: 'object' } },
+            options: { type: 'object', properties: { embed_model: { type: 'string' } } }
+          }
+        },
+        SearchRequest: {
+          type: 'object',
+          properties: { text: { type: 'string' }, collection_id: { type: 'string' }, top_k: { type: 'integer' } }
+        },
+        ConfigRequest: { type: 'object', properties: { default_model: { type: 'string' } } },
+        ChatRequest: {
+          type: 'object',
+          properties: {
+            role: { type: 'string', description: 'role of the message (user/system)' },
+            content: { type: 'string' },
+            model: { type: 'string' },
+            top_k: { type: 'integer' },
+            collection_id: { type: 'string' }
+          }
+        }
+      }
+    },
     paths: {
-      '/health': {},
-      '/ingest': {},
-      '/search': {},
-      '/models': {},
-      '/config': {},
-      '/agents': {},
-      '/conversations': {},
-      '/chat': {}
+      '/health': { get: { summary: 'Health check', responses: { '200': { description: 'OK' } } } },
+      '/ingest': { post: { summary: 'Enqueue ingest', requestBody: { content: { 'application/json': { schema: { $ref: '#/components/schemas/IngestRequest' } } } }, responses: { '202': { description: 'queued' } } } },
+      '/search': { post: { summary: 'Vector search', requestBody: { content: { 'application/json': { schema: { $ref: '#/components/schemas/SearchRequest' } } } }, responses: { '200': { description: 'results' } } } },
+      '/models': { get: { summary: 'List installed Ollama models', responses: { '200': { description: 'models' } } } },
+      '/config': { post: { summary: 'Set config (default model)', requestBody: { content: { 'application/json': { schema: { $ref: '#/components/schemas/ConfigRequest' } } } }, responses: { '200': { description: 'ok' } } }, get: { summary: 'Get config', responses: { '200': { description: 'current config' } } } },
+      '/agents': { get: { summary: 'List agents', responses: { '200': { description: 'Agents' } } }, post: { summary: 'Create/update agent', requestBody: { content: { 'application/json': { schema: { type: 'object' } } } }, responses: { '200': { description: 'Agent' } } } },
+      '/conversations': { get: { summary: 'List conversations', responses: { '200': { description: 'Conversations' } } }, post: { summary: 'Create conversation', requestBody: { content: { 'application/json': { schema: { type: 'object' } } } }, responses: { '200': { description: 'Conversation' } } } },
+      '/chat': { post: { summary: 'Send message to chat', requestBody: { content: { 'application/json': { schema: { $ref: '#/components/schemas/ChatRequest' }, example: { role: 'user', content: 'Halo', model: 'gemma3:4b' } } } }, responses: { '200': { description: 'Chat response' } } } }
     }
   };
 
   fastify.get('/openapi.json', async (request, reply) => reply.send(openapi));
 
   fastify.get('/docs', async (request, reply) => {
-    const html = `<!doctype html><html><head><meta charset="utf-8" /><title>Vyre API Docs</title></head><body><redoc spec-url='/openapi.json'></redoc><script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script></body></html>`;
+    const html = `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Vyre API Docs</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="data:;base64,=">
+  </head>
+  <body>
+    <redoc spec-url='/openapi.json'></redoc>
+    <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"> </script>
+  </body>
+</html>`;
     reply.type('text/html').send(html);
   });
 
-  fastify.get('/', async (request, reply) => reply.type('text/html').send('<h1>Vyre backend</h1><p>API running.</p>'));
+  fastify.get('/', async (request, reply) => {
+    const html = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Vyre Backend</title>
+  <style>
+    :root{--bg:#0f1720;--card:#0b1220;--accent:#7c3aed;--muted:#9aa4b2}
+    html,body{height:100%;margin:0;font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(180deg,#07111a 0%, #0b1220 100%);color:#e6eef6}
+    .wrap{max-width:980px;margin:40px auto;padding:24px}
+    .hero{display:flex;align-items:center;gap:20px}
+    .logo{width:64px;height:64px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#3b82f6);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff}
+    h1{margin:0;font-size:28px}
+    p.lead{margin:6px 0 18px;color:var(--muted)}
+    .card{background:var(--card);border-radius:12px;padding:18px;margin-top:18px;box-shadow:0 6px 18px rgba(2,6,23,0.6)}
+    .actions{display:flex;flex-wrap:wrap;gap:10px}
+    .btn{display:inline-block;padding:10px 14px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.06);color:#e6eef6;text-decoration:none}
+    .btn.primary{background:linear-gradient(90deg,var(--accent),#3b82f6);border:0}
+    .meta{margin-top:12px;color:var(--muted);font-size:13px;display:flex;gap:12px;align-items:center}
+    .status{display:inline-flex;align-items:center;gap:8px}
+    .dot{width:10px;height:10px;border-radius:999px;background:#f44336;display:inline-block}
+    @media (max-width:640px){.wrap{margin:18px;padding:16px}.hero{flex-direction:row}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <div class="logo">V</div>
+      <div>
+        <h1>Vyre — Local AI backend</h1>
+        <p class="lead">Run locally: ingestion, vector search, and model-backed chat. Secure by default.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div>
+          <strong>Quick links</strong>
+          <div class="actions" style="margin-top:8px">
+            <a class="btn primary" href="/docs">Open API Docs</a>
+            <a class="btn" href="/swagger">Swagger UI</a>
+            <a class="btn" href="/openapi.json">OpenAPI JSON</a>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div class="meta">
+            <span class="status"><span id="statusDot" class="dot"></span><span id="statusText">Checking...</span></span>
+            <span id="version"></span>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:14px;color:var(--muted)">Tip: Use the <em>Swagger UI</em> to interactively try endpoints, or browse the machine-readable <code>/openapi.json</code>.</div>
+    </div>
+  </div>
+
+  <script>
+    async function checkStatus(){
+      try{
+        const r = await fetch('/health');
+        if(r.ok){ document.getElementById('statusDot').style.background='#2ecc71'; document.getElementById('statusText').textContent='Healthy'; }
+        else { document.getElementById('statusDot').style.background='#f39c12'; document.getElementById('statusText').textContent='Degraded'; }
+      }catch(e){ document.getElementById('statusDot').style.background='#e74c3c'; document.getElementById('statusText').textContent='Offline'; }
+      try{
+        const s = await fetch('/openapi.json'); if(s.ok){ const j = await s.json(); document.getElementById('version').textContent = (j.info?.title || '') + ' — v' + (j.info?.version||''); }
+      }catch(e){}
+    }
+    checkStatus();
+  </script>
+</body>
+</html>`;
+    reply.type('text/html').send(html);
+  });
+
+  // Swagger UI (interactive Try-it) at /swagger
+  fastify.get('/swagger', async (request, reply) => {
+    const html = `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Vyre Swagger UI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@4/swagger-ui.css" />
+  </head>
+  <body>
+    <div id="swagger"></div>
+    <script src="https://unpkg.com/swagger-ui-dist@4/swagger-ui-bundle.js"></script>
+    <script src="https://unpkg.com/swagger-ui-dist@4/swagger-ui-standalone-preset.js"></script>
+    <script>
+      const ui = SwaggerUIBundle({
+        url: '/openapi.json',
+        dom_id: '#swagger',
+        presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+        layout: 'BaseLayout',
+        tryItOutEnabled: true
+      });
+      window.ui = ui;
+    </script>
+  </body>
+</html>`;
+    reply.type('text/html').send(html);
+  });
+
+  // Chat UI: modern, minimal chat page with theme selector
+  fastify.get('/chat-ui', async (request, reply) => {
+    const html = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Vyre Chat</title>
+  <style>
+    :root{--bg:#0b1220;--panel:#0f1726;--muted:#9aa4b2;--accent:#7c3aed;--text:#e6eef6}
+    .light{--bg:#f7fafc;--panel:#ffffff;--muted:#6b7280;--accent:#6366f1;--text:#0b1220}
+    html,body{height:100%;margin:0;font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(180deg,var(--bg),#07111a);color:var(--text)}
+    .app{max-width:980px;margin:28px auto;padding:18px}
+    .header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+    .title{font-size:20px;font-weight:600}
+    .controls{display:flex;gap:8px;align-items:center}
+    .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 10px;border-radius:8px;color:var(--text);cursor:pointer}
+    .btn.primary{background:linear-gradient(90deg,var(--accent),#3b82f6);border:0}
+    .panel{background:var(--panel);border-radius:12px;padding:12px;height:60vh;display:flex;flex-direction:column;gap:12px;box-shadow:0 6px 24px rgba(2,6,23,0.6)}
+    .messages{flex:1;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:10px}
+    .msg{max-width:78%;padding:10px;border-radius:10px;line-height:1.4}
+    .msg.user{align-self:flex-end;background:rgba(255,255,255,0.06)}
+    .msg.assistant{align-self:flex-start;background:rgba(0,0,0,0.12)}
+    .composer{display:flex;gap:8px}
+    .input{flex:1;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--text)}
+    .meta{font-size:12px;color:var(--muted)}
+    @media (max-width:640px){.app{margin:12px}}
+  </style>
+</head>
+<body>
+  <div id="root" class="app">
+    <div class="header">
+      <div>
+        <div class="title">Vyre — Chat</div>
+        <div class="meta">Local AI backend — retrieval-augmented chat</div>
+      </div>
+      <div class="controls">
+        <select id="modelSelect" class="btn" aria-label="Model">
+          <option value="gemma3:4b">gemma3:4b</option>
+        </select>
+        <button id="themeBtn" class="btn">Toggle Theme</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div id="messages" class="messages"></div>
+      <form id="frm" class="composer">
+        <input id="txt" class="input" placeholder="Write a message..." autocomplete="off" />
+        <button type="submit" class="btn primary">Send</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const root = document.getElementById('root');
+    const messagesEl = document.getElementById('messages');
+    const txt = document.getElementById('txt');
+    const frm = document.getElementById('frm');
+    const themeBtn = document.getElementById('themeBtn');
+    const modelSelect = document.getElementById('modelSelect');
+
+    function appendMsg(role, text){
+      const d = document.createElement('div');
+      d.className = 'msg ' + (role==='user' ? 'user' : 'assistant');
+      d.textContent = text;
+      messagesEl.appendChild(d);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function setTheme(t){
+      if(t==='light') document.documentElement.classList.add('light'); else document.documentElement.classList.remove('light');
+      localStorage.setItem('vyre_theme', t);
+    }
+    const saved = localStorage.getItem('vyre_theme') || 'dark'; setTheme(saved);
+    themeBtn.addEventListener('click', ()=> setTheme(document.documentElement.classList.contains('light') ? 'dark' : 'light'));
+
+    frm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const v = txt.value.trim(); if(!v) return;
+      appendMsg('user', v); txt.value='';
+      appendMsg('assistant', '...');
+      try{
+        const res = await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'user',content:v,model:modelSelect.value})});
+        const j = await res.json();
+        // replace last assistant '...' with actual response
+        const last = messagesEl.querySelectorAll('.msg.assistant');
+        if(last.length) last[last.length-1].textContent = j.response || j.error || JSON.stringify(j);
+      }catch(err){
+        const last = messagesEl.querySelectorAll('.msg.assistant');
+        if(last.length) last[last.length-1].textContent = 'Error: ' + String(err.message || err);
+      }
+    });
+  </script>
+</body>
+</html>`;
+    reply.type('text/html').send(html);
+  });
 
   return fastify;
 }
