@@ -1,0 +1,10 @@
+{
+  "name": "tauri-chat-skeleton",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo 'Run Tauri dev (not installed)'; exit 0",
+    "build": "echo 'Build Tauri app (not installed)'; exit 0"
+  },
+  "dependencies": {}
+}

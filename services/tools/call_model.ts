@@ -3,16 +3,34 @@ import { promisify } from 'util';
 const execFileAsync = promisify(execFile);
 
 type CallResult = { ok: true; text: string } | { ok: false; err: string };
+    const out = String(stdout).trim();
+    // Try to parse JSON from stdout (may be raw text or JSON-lines)
+    try {
+      // handle multiple JSON objects per-line
+      const lines = out.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+      for (const line of lines) {
+        try {
+          const parsed = JSON.parse(line);
+          if (typeof parsed === 'string') return { ok: true, text: parsed };
+          if (parsed?.output && typeof parsed.output === 'string') return { ok: true, text: parsed.output };
+          if (Array.isArray(parsed?.choices) && parsed.choices[0]?.text) return { ok: true, text: parsed.choices[0].text };
+          if (parsed?.text) return { ok: true, text: parsed.text };
+          // sometimes shape is { results: [{ text: '...' }] }
+          if (Array.isArray(parsed?.results) && parsed.results[0]?.text) return { ok: true, text: parsed.results[0].text };
+        } catch (e) {
+          // not JSON, continue
+        }
+      }
+    } catch (e) {
+      // fall through
+    }
 
-/**
- * Try to call an LLM model via Ollama HTTP serve endpoint, then CLI `run` as fallback.
- * Returns generated text or error.
- */
-export async function callModel(prompt: string, model = process.env.OLLAMA_MODEL || 'gemma3:4b'): Promise<CallResult> {
-  // Try HTTP API first
-  const httpUrl = process.env.OLLAMA_HTTP || 'http://127.0.0.1:11434/run';
-  try {
-    const body = JSON.stringify({ model, prompt });
+    // fallback: if output contains a recognizable generated block, try to extract
+    // common prefix labels
+    const match = out.match(/(?:Assistant|Response|Output)[:\s\n]+([\s\S]{1,4000})$/i);
+    if (match) return { ok: true, text: match[1].trim() };
+    // otherwise return full stdout
+    return { ok: true, text: out };
     const res = await (globalThis as any).fetch(httpUrl, { method: 'POST', body, headers: { 'Content-Type': 'application/json' } } as any);
     if (res.ok) {
       const j = await res.json();

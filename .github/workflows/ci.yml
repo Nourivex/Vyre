@@ -29,3 +29,14 @@ jobs:
       - name: Run smoke test
         run: npm run smoke
         working-directory: services
+
+      - name: Optional: Run model-enabled smoke (requires secrets)
+        if: ${{ secrets.OLLAMA_HTTP != '' || secrets.OLLAMA_CMD != '' || secrets.OLLAMA_MODEL != '' }}
+        env:
+          OLLAMA_HTTP: ${{ secrets.OLLAMA_HTTP }}
+          OLLAMA_CMD: ${{ secrets.OLLAMA_CMD }}
+          OLLAMA_MODEL: ${{ secrets.OLLAMA_MODEL }}
+        run: |
+          echo "Running smoke with Ollama config from secrets"
+          npm run smoke
+        working-directory: services

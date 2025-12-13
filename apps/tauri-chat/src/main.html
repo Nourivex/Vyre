@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Vyre Chat (Skeleton)</title>
+    <style>
+      body { font-family: system-ui, Arial; padding: 16px }
+      #log { white-space: pre-wrap; border: 1px solid #ddd; padding: 8px; height: 200px; overflow: auto }
+    </style>
+  </head>
+  <body>
+    <h1>Vyre Chat (Skeleton)</h1>
+    <label>Conversation ID (optional): <input id="conv" /></label><br>
+    <textarea id="inp" rows="4" cols="60" placeholder="Type your message"></textarea><br>
+    <button id="send">Send</button>
+    <h3>Response</h3>
+    <div id="log">No messages yet.</div>
+
+    <script>
+      async function send(){
+        const conv = document.getElementById('conv').value;
+        const content = document.getElementById('inp').value;
+        const res = await fetch('http://127.0.0.1:3000/chat', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ conversation_id: conv || undefined, role:'user', content }) });
+        const j = await res.json();
+        document.getElementById('log').textContent = JSON.stringify(j, null, 2);
+      }
+      document.getElementById('send').addEventListener('click', send);
+    </script>
+  </body>
+</html>
