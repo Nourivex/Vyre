@@ -1,0 +1,30 @@
+:root{--bg:#07111a;--surface:#0b1220;--panel:#0f1726;--muted:#9aa4b2;--accent:#7c3aed;--text:#e6eef6}
+.light{--bg:#f7fafc;--surface:#ffffff;--panel:#f8fafc;--muted:#6b7280;--accent:#6366f1;--text:#0b1220}
+html,body{height:100%;margin:0;font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(180deg,var(--bg),#07111a);color:var(--text)}
+.layout{display:flex;height:100vh}
+.sidebar{width:260px;background:var(--surface);border-right:1px solid rgba(255,255,255,0.03);padding:18px;box-sizing:border-box}
+.brand{font-weight:700;font-size:18px;margin-bottom:8px}
+.muted{color:var(--muted);font-size:13px}
+.nav{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+.nav button{background:transparent;border:0;color:var(--text);padding:10px;border-radius:8px;text-align:left;cursor:pointer}
+.nav button.active{background:linear-gradient(90deg,var(--accent),#3b82f6);color:#fff}
+.content{flex:1;display:flex;flex-direction:column;padding:18px;box-sizing:border-box}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.panel{flex:1;background:var(--panel);border-radius:12px;padding:14px;box-shadow:0 8px 30px rgba(2,6,23,0.6);display:flex;flex-direction:column}
+.hero{display:flex;align-items:center;gap:12px}
+.logo{width:40px;height:40px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#3b82f6);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff}
+.lead{margin:6px 0 0;color:var(--muted)}
+.actions{display:flex;gap:8px;margin-top:12px}
+.btn{padding:8px 12px;border-radius:8px;border:0;cursor:pointer}
+.btn.primary{background:linear-gradient(90deg,var(--accent),#3b82f6);color:#fff}
+iframe{border:0;width:100%;height:100%;border-radius:8px}
+@media (max-width:900px){.sidebar{display:none}.layout{flex-direction:column}}
+
+/* Chat */
+.messages{flex:1;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:78%;padding:10px;border-radius:10px;line-height:1.4}
+.msg.user{align-self:flex-end;background:rgba(255,255,255,0.06)}
+.msg.assistant{align-self:flex-start;background:rgba(0,0,0,0.12)}
+.composer{display:flex;gap:8px;margin-top:10px}
+.input{flex:1;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--text)}
+.btn.small{padding:6px 10px}
