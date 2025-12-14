@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import CodeBlock from '../components/CodeBlock';
+import { Plus, Mic as Microphone, ArrowUp } from 'lucide-react';
 
 type Props = { isDark: boolean };
 
@@ -9,6 +10,7 @@ function genId() { return String(Date.now()) + Math.random().toString(36).slice(
 
 export default function ChatInterface({ isDark }: Props) {
   const [text, setText] = useState('');
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [sending, setSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -36,6 +38,7 @@ export default function ChatInterface({ isDark }: Props) {
     setMessages(m => [...m, userMsg]);
     setText('');
     setSending(true);
+    setSuggestions([]);
 
     // simulate assistant typing
     const typingId = genId();
@@ -55,6 +58,19 @@ export default function ChatInterface({ isDark }: Props) {
       setSending(false);
     }, 1400);
   }
+
+  // simple suggestion mock: filter a small list
+  useEffect(()=>{
+    if (!text.trim()) { setSuggestions([]); return; }
+    const pool = [
+      'Contoh fungsi add',
+      'Cara menggunakan API',
+      'Contoh query SQL',
+      'Bagaimana cara deploy aplikasi React?'
+    ];
+    const matches = pool.filter(p => p.toLowerCase().includes(text.toLowerCase())).slice(0,3);
+    setSuggestions(matches);
+  }, [text]);
 
   function renderMessage(m: Message){
     const isUser = m.role === 'user';
@@ -96,23 +112,40 @@ export default function ChatInterface({ isDark }: Props) {
           {messages.map(m => renderMessage(m))}
         </div>
 
-        <div className="mt-4 flex space-x-3">
-          <input
-            type="text"
-            placeholder="Type your message here..."
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleSend(); }}
-            className={`${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'} flex-1 p-3 border rounded-lg focus:outline-none`}
-          />
-          <button
-            onClick={handleSend}
-            disabled={sending}
-            className={`text-white font-bold py-3 px-6 rounded-lg transition duration-150 ${sending ? 'opacity-60 pointer-events-none' : ''}`}
-            style={{ backgroundColor: 'var(--accent-color, #7c3aed)' }}
-          >
-            {sending ? '...' : 'Send'}
-          </button>
+        <div className="mt-4">
+          <div className="relative">
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm px-3 py-2 flex items-center gap-3">
+              <button className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+                <Plus className="w-5 h-5 text-gray-500" />
+              </button>
+
+              <input
+                type="text"
+                placeholder="Ask anything"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSend(); }}
+                className="flex-1 bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none px-2"
+              />
+
+              <div className="flex items-center">
+                <button onClick={() => { if (!text.trim()) { /* mic action */ } else handleSend(); }} className="ml-2 bg-blue-500 hover:bg-blue-600 text-white p-3 rounded-full shadow-md">
+                  {text.trim() ? <ArrowUp className="w-4 h-4" /> : <Microphone className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* suggestions dropdown */}
+            {suggestions.length > 0 && (
+              <div className="absolute left-3 right-3 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-40 overflow-hidden">
+                {suggestions.map((s, i) => (
+                  <button key={i} onClick={() => { setText(s); setSuggestions([]); }} className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
