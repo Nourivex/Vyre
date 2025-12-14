@@ -7,6 +7,13 @@
 /* Custom tokens */
 :root{
   --card: #ffffff;
+  --muted: #6b7280; /* default muted text */
+}
+
+/* dark-mode token overrides (used by components via utility classes) */
+.dark{
+  --card: rgba(255,255,255,0.04);
+  --muted: #c8dbe6; /* brighter muted text for better contrast */
 }
 
 .bg-sidebar{background:linear-gradient(180deg,#fafafb, #fff)}
@@ -53,23 +60,23 @@ body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,A
 .btn-press:active { transform: translateY(1px) scale(.997); }
 
 /* Dark theme overrides */
-.dark html, .dark body, .dark #root { background-color: #071026; color: #e6eef8; }
+.dark html, .dark body, .dark #root { background-color: #071026; color: #f0f7fb; }
 .dark .bg-sidebar { background: linear-gradient(180deg,#071026,#071018); }
 .dark .btn-modern { background: linear-gradient(180deg,#071026,#06121a); border-color: rgba(255,255,255,0.04); color: #e6eef8; }
 .dark .input, .dark select, .dark input[type="text"], .dark textarea { background: #0b1220; color: #e6eef8; border-color: #1f2937; }
 .dark .conv-item { background: transparent; }
 .dark .conv-item:hover { background: rgba(255,255,255,0.02); }
-.dark .conv-item .avatar { background: linear-gradient(135deg,#0b1220,#111827); color:#a78bfa; }
-.dark .muted, .dark .conv-meta { color: #9ca3af; }
-.dark .brand-title { color: #e6eef8; }
+.dark .conv-item .avatar { background: linear-gradient(135deg,#0b1220,#111827); color:#c7b5ff; }
+.dark .muted, .dark .conv-meta { color: var(--muted); }
+.dark .brand-title { color: #f0f7fb; }
 .dark .sidebar-header { background: linear-gradient(90deg, rgba(124,58,237,0.06), rgba(59,130,246,0.02)); }
 .dark .primary { background-color:#7c3aed; color:white; }
 .dark .btn-modern svg { opacity: .95; }
 
 /* Ensure border/text contrasts in dark mode for small elements */
-.dark .text-gray-500 { color: #9aa4b2; }
-.dark .text-gray-400 { color: #9aa4b2; }
-.dark .border-gray-200 { border-color: rgba(255,255,255,0.04); }
-.dark .bg-white { background-color: transparent; }
+.dark .text-gray-500 { color: var(--muted); }
+.dark .text-gray-400 { color: #b8c5cf; }
+.dark .border-gray-200 { border-color: rgba(255,255,255,0.06); }
+.dark .bg-white { background-color: var(--card); }
 
 

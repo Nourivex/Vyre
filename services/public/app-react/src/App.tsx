@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import Sidebar from "./components/Sidebar";
 import { Settings } from 'lucide-react';
+import SettingsModal from './components/SettingsModal';
 import ChatInterface from "./pages/ChatInterface";
 import KnowledgeBasePage from "./pages/KnowledgeBasePage";
 
@@ -35,13 +36,18 @@ export default function App() {
   useEffect(() => {
     function onNavigate(e: CustomEvent){ setPage('collections'); }
     function onOpenChat(e: CustomEvent){ setPage('chat'); }
+    function onOpenSettings(e: CustomEvent){ setIsSettingsOpen(true); }
     window.addEventListener('navigate:collections', onNavigate as EventListener);
     window.addEventListener('open:chat', onOpenChat as EventListener);
+    window.addEventListener('open:settings', onOpenSettings as EventListener);
     return () => {
       window.removeEventListener('navigate:collections', onNavigate as EventListener);
       window.removeEventListener('open:chat', onOpenChat as EventListener);
+      window.removeEventListener('open:settings', onOpenSettings as EventListener);
     };
   }, []);
+
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   return (
     // toggle `dark` class by applying conditional className
@@ -95,6 +101,7 @@ export default function App() {
         <main className="flex flex-col flex-1 p-6">
           {page === 'chat' ? <ChatInterface isDark={isDark} /> : <KnowledgeBasePage />}
         </main>
+        <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} isDark={isDark} setIsDark={setIsDark} />
       </div>
     </div>
   );

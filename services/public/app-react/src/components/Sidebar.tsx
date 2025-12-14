@@ -134,7 +134,7 @@ export default function Sidebar() {
     <div className="flex flex-col">
 
       <div className="mt-5 flex items-center justify-between">
-        <div className="text-sm text-gray-600">Conversations</div>
+        <div className="text-sm text-gray-500">Conversations</div>
         <button onClick={handleNewConversation} className="btn-modern primary text-sm flex items-center"> 
           <Plus className="w-4 h-4 mr-2" />
           New
@@ -157,7 +157,7 @@ export default function Sidebar() {
         ))}
       </div>
 
-      <div className="mt-4 text-sm text-gray-600 flex items-center"><User className="w-4 h-4 mr-2 text-gray-500" />Agent</div>
+      <div className="mt-4 text-sm text-gray-500 flex items-center"><User className="w-4 h-4 mr-2 text-gray-500" />Agent</div>
       <div className="mt-2">
         <select id="agentSelect" value={selectedAgentId || '__none'} onChange={handleAgentChange} className="w-full border border-gray-200 rounded-md px-3 py-2 bg-white text-sm">
           <option value="__none">Default</option>
@@ -172,7 +172,7 @@ export default function Sidebar() {
           className="w-full flex items-center px-3 py-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800"
         >
           <Database className="w-4 h-4 mr-2 text-gray-500" />
-          <span className="text-sm text-gray-600">Knowledge Base</span>
+          <span className="text-sm text-gray-500">Knowledge Base</span>
         </button>
       </div>
     </div>
