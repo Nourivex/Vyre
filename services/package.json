@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "ts-node dev-runner.ts",
+    "dev:ui": "npm --prefix public/app-react run dev",
+    "dev:all": "node ./scripts/dev-all.js",
     "test": "npx ts-node test/search-integration.test.ts && npx ts-node test/vector-unit.test.ts",
     "smoke": "ts-node test/smoke-test.ts"
   },
@@ -12,6 +14,13 @@
     "better-sqlite3": "^12.5.0",
     "fastify": "^5.6.2",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "uninstall": "^0.0.0"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.22",
+    "concurrently": "^8.2.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.3"
   }
 }

@@ -173,24 +173,35 @@ export function createServer(opts = {}) {
     reply.type('text/html').send(html);
   });
 
-  // Serve static app
+  // Serve static app. Prefer `public/app-react` when present (new React app),
+  // otherwise fall back to the legacy `public/app`.
   fastify.get('/', async (request, reply) => {
     try {
-      const p = path.join(__dirname, '..', 'public', 'app', 'index.html');
-      const html = fs.readFileSync(p, 'utf8');
-      return reply.type('text/html').send(html);
+      const prefer = path.join(__dirname, '..', 'public', 'app-react', 'index.html');
+      const fallback = path.join(__dirname, '..', 'public', 'app', 'index.html');
+      if (fs.existsSync(prefer)) {
+        const html = fs.readFileSync(prefer, 'utf8');
+        return reply.type('text/html').send(html);
+      }
+      if (fs.existsSync(fallback)) {
+        const html = fs.readFileSync(fallback, 'utf8');
+        return reply.type('text/html').send(html);
+      }
+      return reply.code(404).send('app_not_found');
     } catch (e) {
       request.log.error(e);
-      return reply.code(500).send('app_not_found');
+      return reply.code(500).send('app_error');
     }
   });
 
-  // Note: /chat-ui route removed — root (/) serves the app now
-
+  // Serve static files from app-react first, then legacy app
   fastify.get('/static/*', async (request: any, reply) => {
     try {
       const rel = request.params['*'] as string || '';
-      const p = path.join(__dirname, '..', 'public', 'app', rel);
+      const prefer = path.join(__dirname, '..', 'public', 'app-react', rel);
+      const fallback = path.join(__dirname, '..', 'public', 'app', rel);
+      let p = prefer;
+      if (!fs.existsSync(p)) p = fallback;
       if (!fs.existsSync(p)) return reply.code(404).send('not_found');
       const ext = path.extname(p).toLowerCase();
       const map: any = { '.js': 'application/javascript', '.css': 'text/css', '.html': 'text/html', '.json': 'application/json' };

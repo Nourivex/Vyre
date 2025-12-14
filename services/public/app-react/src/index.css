@@ -1,0 +1,75 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom tokens */
+:root{
+  --card: #ffffff;
+}
+
+.bg-sidebar{background:linear-gradient(180deg,#fafafb, #fff)}
+.btn-primary{background-color:theme('colors.primary');color:white}
+
+/* Modern UI tweaks */
+html,body,#root{height:100%}
+body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial}
+
+/* Smooth transitions for theme and hover states */
+*{transition:background-color .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease}
+
+.sidebar-header{background:linear-gradient(90deg,rgba(99,102,241,0.06), rgba(59,130,246,0.03));padding:10px;border-radius:8px}
+.brand-title{font-weight:700}
+.muted{color:var(--muted)}
+
+.btn-modern{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;border:1px solid rgba(0,0,0,0.06);background:linear-gradient(180deg,#fff,#fafafa)}
+.btn-modern svg{width:16px;height:16px}
+
+.conv-item{display:flex;gap:10px;align-items:center;padding:10px;border-radius:10px}
+.conv-item .avatar{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#eef2ff,#f0f9ff);display:flex;align-items:center;justify-content:center;font-weight:600;color:#4f46e5}
+.conv-item:hover{background:rgba(99,102,241,0.04)}
+.conv-title{font-size:14px;font-weight:600}
+.conv-meta{font-size:12px;color:var(--muted)}
+
+.primary{background-color:#4f46e5;color:white;border:none}
+.primary:hover{filter:brightness(.96)}
+
+/* compact inputs */
+.input, select{padding:.5rem .75rem;border-radius:.75rem;border:1px solid #e6e9ee}
+
+/* Icon helpers */
+.icon { width:18px; height:18px; display:inline-block; vertical-align:middle; }
+.icon-sm { width:14px; height:14px }
+
+/* Theme toggle animation */
+.theme-toggle { display:inline-flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:10px; background:white; border:1px solid rgba(0,0,0,0.06); transition: background-color .18s ease, transform .12s ease; }
+.theme-toggle svg { transition: transform .28s ease, opacity .18s ease; width:20px; height:20px; color:#374151; }
+.theme-toggle.rotate { transform: rotate(20deg); }
+.dark .theme-toggle { background:#374151; border-color:#4b5563; }
+.dark .theme-toggle svg { color:#f9fafb; }
+
+/* subtle press animation */
+.btn-press:active { transform: translateY(1px) scale(.997); }
+
+/* Dark theme overrides */
+.dark html, .dark body, .dark #root { background-color: #071026; color: #e6eef8; }
+.dark .bg-sidebar { background: linear-gradient(180deg,#071026,#071018); }
+.dark .btn-modern { background: linear-gradient(180deg,#071026,#06121a); border-color: rgba(255,255,255,0.04); color: #e6eef8; }
+.dark .input, .dark select, .dark input[type="text"], .dark textarea { background: #0b1220; color: #e6eef8; border-color: #1f2937; }
+.dark .conv-item { background: transparent; }
+.dark .conv-item:hover { background: rgba(255,255,255,0.02); }
+.dark .conv-item .avatar { background: linear-gradient(135deg,#0b1220,#111827); color:#a78bfa; }
+.dark .muted, .dark .conv-meta { color: #9ca3af; }
+.dark .brand-title { color: #e6eef8; }
+.dark .sidebar-header { background: linear-gradient(90deg, rgba(124,58,237,0.06), rgba(59,130,246,0.02)); }
+.dark .primary { background-color:#7c3aed; color:white; }
+.dark .btn-modern svg { opacity: .95; }
+
+/* Ensure border/text contrasts in dark mode for small elements */
+.dark .text-gray-500 { color: #9aa4b2; }
+.dark .text-gray-400 { color: #9aa4b2; }
+.dark .border-gray-200 { border-color: rgba(255,255,255,0.04); }
+.dark .bg-white { background-color: transparent; }
+
+
