@@ -159,7 +159,31 @@ export function createServer(opts = {}) {
     }
   });
 
-  const openapi = { openapi: '3.0.0', info: { title: 'Vyre API', version: '0.1.0' }, paths: { '/health': { get: { responses: { '200': { description: 'ok' } } } }, '/chat': { post: { responses: { '200': { description: 'chat' } } } } } };
+  // Load OpenAPI spec from external JSON to avoid large inline literals
+  const openapiPath = path.join(__dirname, 'openapi.json');
+  let openapi: any = { openapi: '3.0.0', info: { title: 'Vyre API', version: '0.1.0' }, paths: { '/health': { get: { responses: { '200': { description: 'ok' } } } } } };
+  try {
+    if (fs.existsSync(openapiPath)) {
+      const raw = fs.readFileSync(openapiPath, 'utf8');
+      // try parse with error logging
+      try {
+        openapi = JSON.parse(raw);
+      } catch (pe) {
+        console.error('[openapi] failed to parse openapi.json:', String(pe));
+        console.error('[openapi] file preview:', raw.slice(0, 400));
+      }
+    }
+  } catch (e) {
+    console.error('[openapi] read error', String(e));
+  }
+  // Debug: print where we looked for the spec and whether it was loaded
+  try {
+    const exists = fs.existsSync(openapiPath);
+    const size = exists ? fs.statSync(openapiPath).size : 0;
+    console.log('[openapi] path=', openapiPath, 'exists=', exists, 'size=', size, 'loaded_keys=', Object.keys(openapi || {}));
+  } catch (e) {
+    console.log('[openapi] debug failed', String(e));
+  }
 
   fastify.get('/openapi.json', async (request, reply) => reply.send(openapi));
 

@@ -1,0 +1,15 @@
+const fs = require('fs');
+const p = 'H:/AiProject/ZyrexAi/services/api/openapi.json';
+const o = {
+  openapi: '3.0.0',
+  info: { title: 'Vyre API', version: '0.1.0', description: 'API untuk Vyre - ingestion, search, model calls dan konfigurasi' },
+  paths: {
+    '/health': { get: { summary: 'Health', responses: { '200': { description: 'ok', content: { 'application/json': { schema: { type: 'object', properties: { status: { type: 'string' } } } } } } } },
+    '/ingest': { post: { summary: 'Enqueue an ingest job', requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', description: 'Document or payload to ingest' } } } }, responses: { '202': { description: 'accepted', content: { 'application/json': { schema: { type: 'object', properties: { job_id: { type: 'string' }, status: { type: 'string' } } } } } } } },
+    '/search': { post: { summary: 'Vector search', requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { text: { type: 'string' }, query: { type: 'string' }, top_k: { type: 'integer' }, collection_id: { type: 'string' } } } } } }, responses: { '200': { description: 'search results', content: { 'application/json': { schema: { type: 'object', properties: { results: { type: 'array', items: { type: 'object', properties: { chunk_id: { type: 'string' }, score: { type: 'number' }, text: { type: 'string' } } } } } } } } } },
+    '/models': { get: { summary: 'List available local models (Ollama)', responses: { '200': { description: 'models', content: { 'application/json': { schema: { type: 'object', properties: { models: { type: 'array', items: { type: 'string' } } } } } } } } },
+    '/config': { get: { summary: 'Read current config', responses: { '200': { description: 'configuration', content: { 'application/json': { schema: { type: 'object', properties: { default_model: { type: 'string' }, config: { type: 'object' } } } } } } }, post: { summary: 'Update config (set default model)', requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { default_model: { type: 'string' } }, required: ['default_model'] } } } }, responses: { '200': { description: 'ok', content: { 'application/json': { schema: { type: 'object', properties: { ok: { type: 'boolean' }, default_model: { type: 'string' } } } } } }, '400': { description: 'bad request' } } },
+    '/chat': { post: { summary: 'Chat (RAG + model call)', requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { content: { type: 'string' }, model: { type: 'string' }, top_k: { type: 'integer' }, collection_id: { type: 'string' } }, required: ['content'] } } } }, responses: { '200': { description: 'chat response', content: { 'application/json': { schema: { type: 'object', properties: { response: { type: 'string' }, error: { type: 'string' } } } } } } } }
+};
+fs.writeFileSync(p, JSON.stringify(o, null, 2), 'utf8');
+console.log('wrote', p, 'len', fs.readFileSync(p, 'utf8').length);

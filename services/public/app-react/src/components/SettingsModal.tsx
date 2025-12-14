@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Settings, Bell, Palette } from 'lucide-react';
+import { Settings, Bell, Palette, Layers } from 'lucide-react';
 import GeneralSettingsTab from './tabs/GeneralSettingsTab';
 import NotificationsTab from './tabs/NotificationsTab';
 import PersonalizationTab from './tabs/PersonalizationTab';
+import ModelSettingsTab from './tabs/ModelSettingsTab';
 
 type Props = {
   isOpen: boolean;
@@ -11,12 +12,13 @@ type Props = {
   setIsDark: (v: boolean | ((x: boolean) => boolean)) => void;
 };
 
-type TabId = 'General' | 'Notifications' | 'Personalization';
+type TabId = 'General' | 'Notifications' | 'Personalization' | 'Models';
 
 const TABS: { id: TabId; title: string; Icon: any }[] = [
   { id: 'General', title: 'General', Icon: Settings },
   { id: 'Notifications', title: 'Notifications', Icon: Bell },
   { id: 'Personalization', title: 'Personalization', Icon: Palette },
+  { id: 'Models', title: 'Models', Icon: Layers },
 ];
 
 export default function SettingsModal({
@@ -69,8 +71,9 @@ export default function SettingsModal({
      =========================== */
     // Sidebar tetap biru, border responsif tema
     const modalBg = 'bg-blue-50 dark:bg-blue-900/80'; // sidebar
-    // Konten utama: gray-500 saat terang, putih saat gelap
-    const contentBg = 'bg-gray-500 dark:bg-white';
+    // Konten utama: dua var tergantung mode
+    const contentBgDark = 'bg-gray-700 dark:bg-white';
+    const contentBgLight = 'bg-gray-50 dark:bg-white';
     // Border modal: putih saat gelap, abu/gelap saat terang
     const modalBorder = 'border border-gray-900 dark:border-white';
 
@@ -136,15 +139,13 @@ export default function SettingsModal({
 
           {/* Content */}
           <section
-            className={`flex-1 h-full overflow-auto p-6 ${contentBg}`}
+            className={`flex-1 h-full overflow-auto p-6 ${isDark ? contentBgDark : contentBgLight} ${isDark ? 'text-gray-100' : 'text-gray-900'}`}
           >
             {/* Sticky Header */}
             <div
-              className={`sticky top-0 z-10 pb-4 ${contentBg}`}
+              className={`sticky top-0 z-10 pb-4 ${isDark ? contentBgDark : contentBgLight}`}
             >
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-                {activeTab}
-              </h3>
+              <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{activeTab}</h3>
             </div>
 
             <div className="mt-6">
@@ -158,6 +159,8 @@ export default function SettingsModal({
               {activeTab === 'Notifications' && <NotificationsTab />}
 
               {activeTab === 'Personalization' && <PersonalizationTab />}
+
+              {activeTab === 'Models' && <ModelSettingsTab />}
             </div>
           </section>
         </div>

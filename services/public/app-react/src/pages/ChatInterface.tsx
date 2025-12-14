@@ -36,7 +36,13 @@ export default function ChatInterface({ isDark }: Props) {
             onChange={(e) => setText(e.target.value)}
             className={`${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'} flex-1 p-3 border rounded-lg focus:outline-none`}
           />
-          <button onClick={handleSend} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg transition duration-150">
+          <button
+            onClick={handleSend}
+            className="text-white font-bold py-3 px-6 rounded-lg transition duration-150"
+            style={{ backgroundColor: 'var(--accent-color, #7c3aed)' }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--accent-color-hover, #6b28d8)'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--accent-color, #7c3aed)'; }}
+          >
             Send
           </button>
         </div>
