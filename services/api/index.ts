@@ -118,6 +118,77 @@ export function createServer(opts = {}) {
     }
   });
 
+  // === BEGIN: Endpoint baru agar sesuai openapi.json ===
+
+  // Conversations
+  fastify.get('/conversations', async (request, reply) => {
+    // TODO: ganti dengan DB
+    return { conversations: [] };
+  });
+  fastify.post('/conversations', async (request, reply) => {
+    // TODO: simpan ke DB
+    return { id: 'conv_' + Date.now(), title: 'New conversation', updated_at: new Date().toISOString() };
+  });
+  fastify.delete('/conversations/:id', async (request, reply) => {
+    // TODO: hapus dari DB
+    return { ok: true };
+  });
+  fastify.get('/conversations/:id/messages', async (request, reply) => {
+    // TODO: ambil dari DB
+    return { messages: [] };
+  });
+
+  // Agents
+  fastify.get('/agents', async (request, reply) => {
+    // TODO: ambil dari DB
+    return { agents: [] };
+  });
+  fastify.post('/agents', async (request, reply) => {
+    // TODO: simpan ke DB
+    return { ok: true };
+  });
+
+  // Providers
+  fastify.get('/providers', async (request, reply) => {
+    // Dummy: 3 provider populer, hanya ollama yang enabled
+    return {
+      providers: [
+        {
+          provider: 'ollama',
+          is_enabled: true,
+          config_fields: ['OLLAMA_HOST', 'OLLAMA_MODEL']
+        },
+        {
+          provider: 'llama.cpp',
+          is_enabled: false,
+          config_fields: ['LLAMACPP_PATH', 'MODEL_PATH']
+        },
+        {
+          provider: 'openkey',
+          is_enabled: false,
+          config_fields: ['OPENKEY_API_KEY']
+        }
+      ]
+    };
+  });
+  fastify.post('/providers', async (request, reply) => {
+    // TODO: update config
+    return { ok: true };
+  });
+
+  // Collections
+  fastify.get('/collections', async (request, reply) => {
+    // TODO: ambil dari DB
+    return { collections: [] };
+  });
+
+  // Jobs
+  fastify.get('/jobs', async (request, reply) => {
+    // TODO: ambil dari DB/queue
+    return { jobs: [] };
+  });
+  // === END: Endpoint baru agar sesuai openapi.json ===
+
   // Chat: simple retrieval-augmented call
   fastify.post('/chat', async (request, reply) => {
     try {
@@ -139,20 +210,34 @@ export function createServer(opts = {}) {
         request.log.warn({ retrieval_failed: true, error: String(e) });
       }
 
-      const prompt = ctx ? `Context:\n${ctx}\n\nUser: ${content}` : `User: ${content}`;
-      let resp: any = { response: null };
+      // Tambahkan instruksi agar model menjawab dalam bahasa Indonesia jika pertanyaan user pakai bahasa Indonesia
+      let prompt = ctx ? `Context:\n${ctx}\n\nUser: ${content}` : `User: ${content}`;
+      const isIndo = /[a-zA-Z]*\b(apa|siapa|bagaimana|mengapa|dimana|kapan|bisa|tolong|hari|saya|kamu|anda|kenapa|jelaskan|contoh|berikan|sebutkan|menjelaskan|menyebutkan|berikanlah|tolonglah|bantulah|halo|hai|terima kasih|selamat|pagi|siang|malam|sore|kabarmu|kabarku|kabarnya|baik|buruk|bantu|bantuan|jawab|pertanyaan|indonesia|bahasa)\b/i.test(content);
+      if (isIndo) {
+        prompt += "\n\nJawablah dalam bahasa Indonesia yang jelas dan ringkas.";
+      }
       if (callModel) {
         try {
-          const r = await callModel(prompt, model);
-          resp.response = typeof r === 'string' ? r : (r && r.output ? r.output : JSON.stringify(r));
+          let r = await callModel(prompt, model);
+          // Jika hasil string dan valid JSON, parse dulu
+          if (typeof r === 'string') {
+            try {
+              const parsed = JSON.parse(r);
+              r = parsed;
+            } catch {}
+          }
+          let output = r;
+          if (typeof r === 'object' && r !== null) {
+            output = r.output || r.response || r.text || JSON.stringify(r);
+          }
+          return reply.send({ response: output });
         } catch (e) {
           request.log.error({ model_call_failed: true, error: String(e) });
-          resp.error = String(e && (e as any).message ? (e as any).message : e);
+          return reply.send({ error: String(e && (e as any).message ? (e as any).message : e) });
         }
       } else {
-        resp.response = `Model not available — echo: ${content}`;
+        return reply.send({ response: `Model not available — echo: ${content}` });
       }
-      return reply.send(resp);
     } catch (err) {
       request.log.error(err);
       return reply.code(500).send({ error: 'chat_failed' });
@@ -193,7 +278,7 @@ export function createServer(opts = {}) {
   });
 
   fastify.get('/swagger', async (request, reply) => {
-    const html = `<!doctype html><html><head><meta charset="utf-8"/><title>Vyre Swagger UI</title><link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@4/swagger-ui.css"/></head><body><div id="swagger"></div><script src="https://unpkg.com/swagger-ui-dist@4/swagger-ui-bundle.js"></script><script src="https://unpkg.com/swagger-ui-dist@4/swagger-ui-standalone-preset.js"></script><script>const ui = SwaggerUIBundle({url:'/openapi.json',dom_id:'#swagger',presets:[SwaggerUIBundle.presets.apis,SwaggerUIStandalonePreset],layout:'BaseLayout',tryItOutEnabled:true});window.ui=ui;</script></body></html>`;
+    const html = `<!doctype html><html><head><meta charset="utf-8"/><title>Vyre Swagger UI</title><link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@4/swagger-ui.css"/></head><body><div id="swagger"></div><script src="https://unpkg.com/swagger-ui-dist@4/swagger-ui-bundle.js"></script><script src="https://unpkg.com/swagger-ui-dist@4/swagger-ui-standalone-preset.js"></script><script>const ui = SwaggerUIBundle({url:'/openapi.json',dom_id:'#swagger',presets:[SwaggerUIBundle.presets.apis,SwaggerUIStandalonePreset],layout:'BaseLayout'});window.ui=ui;</script></body></html>`;
     reply.type('text/html').send(html);
   });
 

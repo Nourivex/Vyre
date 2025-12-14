@@ -2,24 +2,295 @@
   "openapi": "3.0.0",
   "info": {
     "title": "Vyre API",
-    "version": "0.1.0",
-    "description": "API untuk Vyre - ingestion, search, model calls dan konfigurasi"
+    "version": "0.3.0",
+    "description": "API Lengkap untuk Vyre - Termasuk Manajemen Chat, Agent, Knowledge Base, dan Multi-Provider LLM."
   },
+  "tags": [
+    { "name": "Chat & History", "description": "Operasi percakapan dan pesan" },
+    { "name": "RAG & Knowledge", "description": "Ingestion, Search, dan Manajemen Koleksi" },
+    { "name": "System & Config", "description": "Model, Provider, Agent, dan Konfigurasi Sistem" }
+  ],
   "paths": {
     "/health": {
       "get": {
-        "summary": "Health",
+        "tags": ["System & Config"],
+        "summary": "Check system health",
         "responses": {
-          "200": { "description": "ok" }
+          "200": { "description": "System is healthy" }
+        }
+      }
+    },
+    "/chat": {
+      "post": {
+        "tags": ["Chat & History"],
+        "summary": "Send a message and get a response (RAG + Model)",
+        "description": "Endpoint utama untuk chat. Model dipilih berdasarkan ID (e.g., ollama:llama3).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "conversation_id": { "type": "string", "description": "Optional ID to persist chat history" },
+                  "content": { "type": "string" },
+                  "role": { "type": "string", "default": "user" },
+                  "model_id": { "type": "string", "description": "ID model (e.g., ollama:llama3)" },
+                  "agent_id": { "type": "string" },
+                  "top_k": { "type": "integer", "default": 5 },
+                  "collection_id": { "type": "string" }
+                },
+                "required": ["content", "model_id"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "AI Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": { "type": "string" },
+                    "sources": { 
+                      "type": "array", 
+                      "items": { 
+                        "type": "object",
+                        "properties": { "chunk_id": {"type":"string"}, "text": {"type":"string"}, "score": {"type":"number"} }
+                      } 
+                    },
+                    "conversation_id": { "type": "string" },
+                    "message_id": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/conversations": {
+      "get": {
+        "tags": ["Chat & History"],
+        "summary": "List all conversations",
+        "responses": {
+          "200": {
+            "description": "List of conversations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "conversations": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Conversation" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Chat & History"],
+        "summary": "Create a new conversation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "agent_id": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Conversation" } } } }
+        }
+      }
+    },
+    "/conversations/{id}": {
+      "delete": {
+        "tags": ["Chat & History"],
+        "summary": "Delete a conversation",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Deleted" } }
+      }
+    },
+    "/conversations/{id}/messages": {
+      "get": {
+        "tags": ["Chat & History"],
+        "summary": "Get message history for a conversation",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": {
+            "description": "List of messages",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "messages": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Message" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agents": {
+      "get": {
+        "tags": ["System & Config"],
+        "summary": "List available agents/personas",
+        "responses": {
+          "200": {
+            "description": "List of agents",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "agents": { "type": "array", "items": { "$ref": "#/components/schemas/Agent" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["System & Config"],
+        "summary": "Create or update an agent",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "model_id": { "type": "string", "description": "ID model (e.g., ollama:llama3)" },
+                  "system_prompt": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Agent saved" } }
+      }
+    },
+    "/providers": {
+      "get": {
+        "tags": ["System & Config"],
+        "summary": "List configured LLM providers",
+        "responses": {
+          "200": {
+            "description": "Configured providers",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "providers": { "type": "array", "items": { "$ref": "#/components/schemas/ProviderConfig" } } } }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["System & Config"],
+        "summary": "Update a provider configuration (e.g., set API Key)",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProviderConfigUpdate" } } }
+        },
+        "responses": { "200": { "description": "Configuration updated" } }
+      }
+    },
+    "/collections": {
+      "get": {
+        "tags": ["RAG & Knowledge"],
+        "summary": "List knowledge base collections",
+        "responses": {
+          "200": {
+            "description": "List of collections",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "collections": { "type": "array", "items": { "$ref": "#/components/schemas/Collection" } }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
     "/ingest": {
-      "post": { "summary": "Enqueue an ingest job" }
+      "post": {
+        "tags": ["RAG & Knowledge"],
+        "summary": "Upload file or text to Knowledge Base",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": { "type": "string", "format": "binary" },
+                  "collection_id": { "type": "string" }
+                }
+              }
+            },
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": { "type": "string" },
+                  "filename": { "type": "string" },
+                  "collection_id": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Job Queued",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "job_id": { "type": "string" }, "status": { "type": "string" } } } } }
+          }
+        }
+      }
+    },
+    "/jobs": {
+      "get": {
+        "tags": ["RAG & Knowledge"],
+        "summary": "List background jobs (ingest/embed status)",
+        "responses": {
+          "200": {
+            "description": "List of recent jobs",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "jobs": { "type": "array", "items": { "$ref": "#/components/schemas/Job" } } } }
+              }
+            }
+          }
+        }
+      }
     },
     "/search": {
       "post": {
-        "summary": "Vector search",
+        "tags": ["RAG & Knowledge"],
+        "summary": "Vector search directly",
         "requestBody": {
           "required": true,
           "content": {
@@ -28,7 +299,6 @@
                 "type": "object",
                 "properties": {
                   "text": { "type": "string" },
-                  "query": { "type": "string" },
                   "top_k": { "type": "integer" },
                   "collection_id": { "type": "string" }
                 }
@@ -38,7 +308,7 @@
         },
         "responses": {
           "200": {
-            "description": "search results",
+            "description": "Search results",
             "content": {
               "application/json": {
                 "schema": {
@@ -48,11 +318,7 @@
                       "type": "array",
                       "items": {
                         "type": "object",
-                        "properties": {
-                          "chunk_id": { "type": "string" },
-                          "score": { "type": "number" },
-                          "text": { "type": "string" }
-                        }
+                        "properties": { "chunk_id": { "type": "string" }, "score": { "type": "number" }, "text": { "type": "string" } }
                       }
                     }
                   }
@@ -65,14 +331,19 @@
     },
     "/models": {
       "get": {
-        "summary": "List available local models (Ollama)",
+        "tags": ["System & Config"],
+        "summary": "List available LLM models from all configured providers",
         "responses": {
           "200": {
-            "description": "models",
-            "content": {
-              "application/json": {
-                "schema": { "type": "object", "properties": { "models": { "type": "array", "items": { "type": "string" } } } }
-              }
+            "content": { 
+              "application/json": { 
+                "schema": { 
+                  "type": "object", 
+                  "properties": { 
+                    "models": { "type": "array", "items": { "$ref": "#/components/schemas/LLMModel" } } 
+                  } 
+                } 
+              } 
             }
           }
         }
@@ -80,33 +351,90 @@
     },
     "/config": {
       "get": {
-        "summary": "Read current config",
-        "responses": {
-          "200": {
-            "description": "configuration",
-            "content": {
-              "application/json": {
-                "schema": { "type": "object", "properties": { "default_model": { "type": "string" }, "config": { "type": "object" } } }
-              }
-            }
-          }
-        }
+        "tags": ["System & Config"],
+        "summary": "Read config",
+        "responses": { "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "default_model_id": { "type": "string" } } } } } } }
       },
       "post": {
-        "summary": "Update config (set default model)",
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "default_model": { "type": "string" } }, "required": ["default_model"] } } } },
-        "responses": { 
-          "200": { "description": "ok", "content": { "application/json": { "schema": { "type": "object", "properties": { "ok": { "type": "boolean" }, "default_model": { "type": "string" } } } } } }, 
-          "400": { "description": "bad request" } 
-        }
+        "tags": ["System & Config"],
+        "summary": "Update config",
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "default_model_id": { "type": "string" } } } } } },
+        "responses": { "200": { "description": "OK" } }
       }
-    },
-    "/chat": {
-      "post": {
-        "summary": "Chat (RAG + model call)",
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "content": { "type": "string" }, "model": { "type": "string" }, "top_k": { "type": "integer" }, "collection_id": { "type": "string" } }, "required": ["content"] } } } },
-        "responses": { 
-          "200": { "description": "chat response", "content": { "application/json": { "schema": { "type": "object", "properties": { "response": { "type": "string" }, "error": { "type": "string" } } } } } } 
+    }
+  },
+  "components": {
+    "schemas": {
+      "Conversation": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "agent_id": { "type": "string" },
+          "updated_at": { "type": "string" }
+        }
+      },
+      "Message": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "role": { "type": "string", "enum": ["user", "assistant", "system"] },
+          "content": { "type": "string" },
+          "created_at": { "type": "string" }
+        }
+      },
+      "Agent": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "model_id": { "type": "string", "description": "ID model (e.g., ollama:llama3)" }
+        }
+      },
+      "LLMModel": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "Format: provider:name, e.g., ollama:llama3" },
+          "name": { "type": "string" },
+          "provider": { "type": "string" },
+          "is_local": { "type": "boolean" },
+          "max_tokens": { "type": "integer" }
+        }
+      },
+      "ProviderConfig": {
+        "type": "object",
+        "properties": {
+          "provider": { "type": "string", "description": "Nama provider (e.g., ollama, openai, gemini)" },
+          "is_enabled": { "type": "boolean" },
+          "config_fields": { "type": "array", "description": "List of required config fields (e.g., API_KEY)" , "items": { "type": "string" }}
+        }
+      },
+      "ProviderConfigUpdate": {
+        "type": "object",
+        "properties": {
+          "provider": { "type": "string" },
+          "api_key": { "type": "string", "description": "API key (optional, akan disimpan di backend)" },
+          "base_url": { "type": "string", "description": "URL custom untuk self-hosted provider" }
+        },
+        "required": ["provider"]
+      },
+      "Collection": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "document_count": { "type": "integer" }
+        }
+      },
+      "Job": {
+        "type": "object",
+        "properties": {
+          "job_id": { "type": "string" },
+          "type": { "type": "string" },
+          "status": { "type": "string" },
+          "last_error": { "type": "string" },
+          "created_at": { "type": "string" }
         }
       }
     }

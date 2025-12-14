@@ -18,6 +18,10 @@ Dokumen ini merangkum apa saja yang telah dikerjakan pada backend (lokal-first) 
 - Dokumentasi agen kustom di `.github/agents/vyre.agent.md` (diperbarui agar konfirmasi/progress pakai Bahasa Indonesia).
 - Perbaikan pada `embed_worker` untuk resolving konfigurasi model dengan aman.
 
+### 2025-12-14
+- Endpoint `/chat` kini otomatis mendeteksi jika pertanyaan user dalam bahasa Indonesia dan menambahkan instruksi ke prompt agar model menjawab dalam bahasa Indonesia.
+- Response dari model di endpoint `/chat` kini selalu berupa teks natural (tidak lagi stringified JSON), baik untuk Ollama/gemma3:4b maupun model lain.
+
 ## Status Terbaru — 2025-12-13
 - **Smoke test:** Lulus lokal (`npm run smoke`) — pipeline ingest → embed terverifikasi.
 - **Migrasi DB:** `runMigrations()` dijalankan dan migrasi diterapkan.
