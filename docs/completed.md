@@ -21,6 +21,7 @@ Dokumen ini merangkum apa saja yang telah dikerjakan pada backend (lokal-first) 
 ### 2025-12-14
 - Endpoint `/chat` kini otomatis mendeteksi jika pertanyaan user dalam bahasa Indonesia dan menambahkan instruksi ke prompt agar model menjawab dalam bahasa Indonesia.
 - Response dari model di endpoint `/chat` kini selalu berupa teks natural (tidak lagi stringified JSON), baik untuk Ollama/gemma3:4b maupun model lain.
+ - Integrasi chat ke persistent storage: `/chat` sekarang menyimpan pesan `user` dan `assistant` ke tabel `messages` dan membuat/menautkan `conversation_id` di tabel `conversations`. Tersedia endpoint `GET /conversations` dan `GET /conversations/:id/messages` untuk mengambil daftar percakapan dan riwayat pesan.
 
 ## Status Terbaru — 2025-12-13
 - **Smoke test:** Lulus lokal (`npm run smoke`) — pipeline ingest → embed terverifikasi.
