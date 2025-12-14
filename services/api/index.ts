@@ -122,20 +122,71 @@ export function createServer(opts = {}) {
 
   // Conversations
   fastify.get('/conversations', async (request, reply) => {
-    // TODO: ganti dengan DB
-    return { conversations: [] };
+    try {
+      const db = new Database((require('../utils/paths').getDbPath)());
+      const rows = db.prepare('SELECT conversation_id, title, agent_id, meta, created_at, updated_at FROM conversations ORDER BY updated_at DESC').all();
+      console.log('[DEBUG] /conversations raw rows:', rows);
+      // Normalisasi kolom agar JSON valid dan tidak undefined/null
+      const conversations = rows.map(row => ({
+        conversation_id: row.conversation_id,
+        title: row.title || '',
+        agent_id: row.agent_id || null,
+        meta: row.meta ? (typeof row.meta === 'string' ? (row.meta.trim() ? JSON.parse(row.meta) : {}) : row.meta) : {},
+        created_at: row.created_at,
+        updated_at: row.updated_at
+      }));
+      console.log('[DEBUG] /conversations mapped:', conversations);
+      return { conversations };
+    } catch (e) {
+      request.log.error(e);
+      return { conversations: [] };
+    }
   });
   fastify.post('/conversations', async (request, reply) => {
     // TODO: simpan ke DB
     return { id: 'conv_' + Date.now(), title: 'New conversation', updated_at: new Date().toISOString() };
+  });
+  // Update conversation (title, meta)
+  fastify.patch('/conversations/:id', async (request, reply) => {
+    try {
+      const params = request.params as { id: string };
+      const body = request.body as any || {};
+      const title = typeof body.title === 'string' ? body.title : undefined;
+      const meta = body.meta !== undefined ? body.meta : undefined;
+      if (!title && meta === undefined) return reply.code(400).send({ error: 'no_changes' });
+      const db = new Database((require('../utils/paths').getDbPath)());
+      const now = new Date().toISOString();
+      const updates: string[] = [];
+      const paramsArr: any[] = [];
+      if (title !== undefined) { updates.push('title = ?'); paramsArr.push(title); }
+      if (meta !== undefined) { updates.push('meta = ?'); paramsArr.push(typeof meta === 'string' ? meta : JSON.stringify(meta)); }
+      updates.push('updated_at = ?'); paramsArr.push(now);
+      paramsArr.push(params.id);
+      const sql = `UPDATE conversations SET ${updates.join(', ')} WHERE conversation_id = ?`;
+      const res = db.prepare(sql).run(...paramsArr);
+      if (res.changes === 0) return reply.code(404).send({ error: 'not_found' });
+      return { ok: true, id: params.id, updated_at: now };
+    } catch (e) {
+      request.log.error(e);
+      return reply.code(500).send({ error: 'update_failed' });
+    }
   });
   fastify.delete('/conversations/:id', async (request, reply) => {
     // TODO: hapus dari DB
     return { ok: true };
   });
   fastify.get('/conversations/:id/messages', async (request, reply) => {
-    // TODO: ambil dari DB
-    return { messages: [] };
+    try {
+      const params = request.params as { id: string };
+      const conversationId = params.id;
+      const db = new Database((require('../utils/paths').getDbPath)());
+      const rows = db.prepare('SELECT message_id, role, content, created_at FROM messages WHERE conversation_id = ? ORDER BY created_at ASC').all(conversationId);
+      console.log(`[DEBUG] /conversations/${conversationId}/messages rows:`, rows);
+      return { messages: rows };
+    } catch (e) {
+      request.log.error(e);
+      return { messages: [] };
+    }
   });
 
   // Agents
@@ -195,14 +246,35 @@ export function createServer(opts = {}) {
       const body = request.body as any || {};
       const content = String(body.content || '');
       const model = body.model || getDefaultModelSafe();
+      const conversationId = body.conversation_id || null;
       if (!content) return reply.code(400).send({ error: 'no_content' });
 
+      // DB setup
+      const db = new Database((require('../utils/paths').getDbPath)());
+      // Simpan pesan user ke messages
+      let convId = conversationId;
+      if (!convId) {
+        // Buat conversation baru jika tidak ada
+        convId = 'conv_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+        db.prepare('INSERT OR IGNORE INTO conversations (conversation_id, created_at, updated_at) VALUES (?, ?, ?)')
+          .run(convId, new Date().toISOString(), new Date().toISOString());
+      }
+      const msgIdUser = 'msg_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+      db.prepare('INSERT INTO messages (message_id, conversation_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)')
+        .run(msgIdUser, convId, 'user', content, new Date().toISOString());
+
+      // Ambil 5 pesan terakhir untuk konteks (role: user/assistant)
+      let history = [];
+      try {
+        history = db.prepare('SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT 5').all(convId).reverse();
+      } catch {}
+
+      // Retrieval context (RAG)
       let ctx = '';
       try {
         const qvec = await embedText(content, 512);
         const vec = new SQLiteVecAdapter();
         const hits = vec.searchVector(qvec, body.top_k || 5, body.collection_id || undefined);
-        const db = new Database((require('../utils/paths').getDbPath)());
         const getChunk = db.prepare('SELECT * FROM chunks WHERE chunk_id = ?');
         const pieces = hits.map((h: any) => getChunk.get(h.chunk_id)?.text).filter(Boolean);
         if (pieces.length) ctx = pieces.slice(0, 6).join('\n\n');
@@ -210,33 +282,43 @@ export function createServer(opts = {}) {
         request.log.warn({ retrieval_failed: true, error: String(e) });
       }
 
-      // Tambahkan instruksi agar model menjawab dalam bahasa Indonesia jika pertanyaan user pakai bahasa Indonesia
-      let prompt = ctx ? `Context:\n${ctx}\n\nUser: ${content}` : `User: ${content}`;
+      // Compose prompt: history + context + user
+      let prompt = '';
+      if (history.length) {
+        prompt += history.map(h => `${h.role === 'user' ? 'User' : 'Assistant'}: ${h.content}`).join('\n');
+        prompt += '\n';
+      }
+      if (ctx) prompt += `Context:\n${ctx}\n`;
+      prompt += `User: ${content}`;
+
+      // Instruksi bahasa Indonesia jika deteksi
       const isIndo = /[a-zA-Z]*\b(apa|siapa|bagaimana|mengapa|dimana|kapan|bisa|tolong|hari|saya|kamu|anda|kenapa|jelaskan|contoh|berikan|sebutkan|menjelaskan|menyebutkan|berikanlah|tolonglah|bantulah|halo|hai|terima kasih|selamat|pagi|siang|malam|sore|kabarmu|kabarku|kabarnya|baik|buruk|bantu|bantuan|jawab|pertanyaan|indonesia|bahasa)\b/i.test(content);
       if (isIndo) {
         prompt += "\n\nJawablah dalam bahasa Indonesia yang jelas dan ringkas.";
       }
+
+      // Model call
       if (callModel) {
         try {
           let r = await callModel(prompt, model);
-          // Jika hasil string dan valid JSON, parse dulu
           if (typeof r === 'string') {
-            try {
-              const parsed = JSON.parse(r);
-              r = parsed;
-            } catch {}
+            try { r = JSON.parse(r); } catch {}
           }
           let output = r;
           if (typeof r === 'object' && r !== null) {
             output = r.output || r.response || r.text || JSON.stringify(r);
           }
-          return reply.send({ response: output });
+          // Simpan jawaban assistant ke messages
+          const msgIdAsst = 'msg_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+          db.prepare('INSERT INTO messages (message_id, conversation_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)')
+            .run(msgIdAsst, convId, 'assistant', String(output), new Date().toISOString());
+          return reply.send({ response: output, conversation_id: convId });
         } catch (e) {
           request.log.error({ model_call_failed: true, error: String(e) });
           return reply.send({ error: String(e && (e as any).message ? (e as any).message : e) });
         }
       } else {
-        return reply.send({ response: `Model not available — echo: ${content}` });
+        return reply.send({ response: `Model not available — echo: ${content}`, conversation_id: convId });
       }
     } catch (err) {
       request.log.error(err);
