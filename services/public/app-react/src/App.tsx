@@ -3,8 +3,10 @@ import React, { useEffect, useState } from "react";
 import Sidebar from "./components/Sidebar";
 import { Settings } from 'lucide-react';
 import ChatInterface from "./pages/ChatInterface";
+import KnowledgeBasePage from "./pages/KnowledgeBasePage";
 
 export default function App() {
+  const [page, setPage] = useState<'chat'|'collections'>('chat');
   const [isDark, setIsDark] = useState<boolean>(() => {
     try {
       const v = localStorage.getItem('vyre:theme');
@@ -29,6 +31,17 @@ export default function App() {
       else doc.classList.remove('dark');
     } catch (e) {}
   }, [isDark]);
+
+  useEffect(() => {
+    function onNavigate(e: CustomEvent){ setPage('collections'); }
+    function onOpenChat(e: CustomEvent){ setPage('chat'); }
+    window.addEventListener('navigate:collections', onNavigate as EventListener);
+    window.addEventListener('open:chat', onOpenChat as EventListener);
+    return () => {
+      window.removeEventListener('navigate:collections', onNavigate as EventListener);
+      window.removeEventListener('open:chat', onOpenChat as EventListener);
+    };
+  }, []);
 
   return (
     // toggle `dark` class by applying conditional className
@@ -80,7 +93,7 @@ export default function App() {
 
         {/* app-main */}
         <main className="flex flex-col flex-1 p-6">
-          <ChatInterface isDark={isDark} />
+          {page === 'chat' ? <ChatInterface isDark={isDark} /> : <KnowledgeBasePage />}
         </main>
       </div>
     </div>

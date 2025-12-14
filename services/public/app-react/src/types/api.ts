@@ -21,4 +21,18 @@ export type Message = {
 export type Collection = {
   id: string;
   name: string;
+  description?: string;
+  document_count: number;
+  chunk_count: number;
+  updated_at?: string;
+};
+
+export type Job = {
+  job_id: string;
+  type: 'ingest' | 'embed' | 'index' | string;
+  status: 'queued' | 'running' | 'done' | 'error';
+  payload: string;
+  attempts: number;
+  last_error?: string;
+  created_at: string;
 };

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Plus, Upload, RefreshCw, ChevronRight, User, Server } from 'lucide-react';
+import { Plus, Upload, RefreshCw, ChevronRight, User, Server, Database } from 'lucide-react';
 import { Agent, Conversation } from "../types/api";
 import useStore from "../store/useStore";
 
@@ -123,6 +123,13 @@ export default function Sidebar() {
     input.click();
   }
 
+  // listen for bulk upload requests from other pages
+  useEffect(() => {
+    function onBulk(e: Event){ handleUpload(); }
+    window.addEventListener('collections:bulk-upload', onBulk as EventListener);
+    return () => window.removeEventListener('collections:bulk-upload', onBulk as EventListener);
+  }, []);
+
   return (
     <div className="flex flex-col">
 
@@ -159,20 +166,13 @@ export default function Sidebar() {
       </div>
       <div id="ollamaStatus" className="text-xs text-gray-500 mt-2 flex items-center"><Server className="w-3 h-3 mr-2 text-gray-500" />{ollamaStatus || 'Ollama: checking…'}</div>
 
-      <div className="mt-4 text-sm text-gray-600">Knowledge Base</div>
-      <div className="mt-2">
-        <select id="collectionSelect" className="w-full border border-gray-200 rounded-md px-3 py-2 bg-white text-sm">
-          <option value="__all">All</option>
-        </select>
-      </div>
-      <div className="mt-3 flex gap-2">
-        <button id="uploadBtn" onClick={handleUpload} className="px-3 py-2 bg-white border border-gray-200 rounded-md text-sm hover:bg-gray-50 flex items-center">
-          <Upload className="w-4 h-4 mr-2" />
-          Upload
-        </button>
-        <button id="refreshCollections" onClick={handleRefreshCollections} className="px-3 py-2 bg-white border border-gray-200 rounded-md text-sm hover:bg-gray-50 flex items-center">
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Refresh
+      <div className="mt-4">
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('navigate:collections'))}
+          className="w-full flex items-center px-3 py-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800"
+        >
+          <Database className="w-4 h-4 mr-2 text-gray-500" />
+          <span className="text-sm text-gray-600">Knowledge Base</span>
         </button>
       </div>
     </div>
