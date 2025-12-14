@@ -1,94 +1,28 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
-import { Plus, Upload, RefreshCw, ChevronRight, User, Server, Database } from 'lucide-react';
-import { Agent, Conversation } from "../types/api";
+import { Plus, ChevronRight, User, Server, Database } from 'lucide-react';
+import { Conversation } from "../types/api";
 import useStore from "../store/useStore";
+import useSidebarLogic from "../hooks/useSidebarLogic";
 
 export default function Sidebar() {
-  const { agents, conversations, setAgents, setConversations, selectedAgentId, setSelectedAgent, ollamaStatus } = useStore();
+  const { agents, conversations, selectedAgentId, setSelectedAgent, ollamaStatus, selectedConversationId, setPage } = useStore();
+  const [rawFilter, setRawFilter] = useState('');
   const [filterText, setFilterText] = useState('');
+  const { handleNewConversation, selectConversation, handleUpload, refreshCollections } = useSidebarLogic();
 
   useEffect(() => {
     let mounted = true;
-
-    async function fetchConversations(){
-      try{
-        const res = await fetch('/conversations');
-        if(!res.ok) throw new Error('no_endpoint');
-        const j = await res.json();
-        const convs = Array.isArray(j) ? j : j.conversations || [];
-        if(mounted) setConversations(convs);
-      }catch(e){
-        if(mounted) setConversations([]);
-      }
-    }
-
-    async function fetchAgents(){
-      try{
-        const res = await fetch('/agents');
-        if(!res.ok) throw new Error('no_agents');
-        const j = await res.json();
-        const agents = Array.isArray(j) ? j : j.agents || [];
-        if(mounted) setAgents(agents);
-      }catch(e){
-        try{
-          const r = await fetch('/models');
-          const jm = await r.json();
-          const rows = Array.isArray(jm.models)? jm.models : [];
-          if(mounted) setAgents(rows.map((m:string)=>({ id: `agent_${m}`, name: m, description: '', } as Agent)));
-        }catch(e2){
-          if(mounted) setAgents([]);
-        }
-      }
-    }
-
-    async function checkOllama(){
-      try{
-        const res = await fetch('/models');
-        if(res.ok){ if(mounted) useStore.setState({ ollamaStatus: 'Ollama: Running' }); return; }
-      }catch(e){}
-      if(mounted) useStore.setState({ ollamaStatus: 'Ollama: Down (using fallback)' });
-    }
-
-    async function fetchCollections(){
-      try{
-        const res = await fetch('/collections');
-        if(!res.ok) throw new Error('no_col');
-        const j = await res.json();
-        const cols = Array.isArray(j) ? j : j.collections || [];
-        // store collections in conversations state temporarily (UI will map)
-        if(mounted) useStore.setState({ /* no-op placeholder for future */ });
-        return cols;
-      }catch(e){
-        return [];
-      }
-    }
-
-    fetchConversations();
-    fetchAgents();
-    checkOllama();
-    fetchCollections();
-
+    // initialization handled inside useSidebarLogic; keep mounted guard for legacy listeners
     return () => { mounted = false; };
-  }, [setAgents, setConversations]);
+  }, []);
 
-  // handlers similar to legacy sidebar
+  useEffect(() => {
+    console.debug('Sidebar: conversations in store', conversations?.length, conversations?.slice?.(0,3));
+  }, [conversations]);
+
+  // handlers
   function renderConversationClick(c: Conversation){
-    window.dispatchEvent(new CustomEvent('conversation:selected', { detail: c }));
-  }
-
-  async function handleNewConversation(){
-    try{
-      const res = await fetch('/conversations', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ title: 'New conversation' }) });
-      if(res.ok){ const j = await res.json(); window.dispatchEvent(new CustomEvent('conversation:new',{detail:j}));
-        // refresh conversations
-        const rr = await fetch('/conversations'); if(rr.ok){ const jj = await rr.json(); setConversations(Array.isArray(jj)? jj : jj.conversations || []); }
-        return;
-      }
-    }catch(e){}
-    const tmp = { id: 'local_'+Date.now(), title: 'New conversation' } as Conversation;
-    setConversations([tmp, ...conversations]);
-    window.dispatchEvent(new CustomEvent('conversation:new',{detail:tmp}));
+    selectConversation(c);
   }
 
   async function handleAgentChange(e: React.ChangeEvent<HTMLSelectElement>){
@@ -96,39 +30,29 @@ export default function Sidebar() {
     const opt = e.target.selectedOptions[0];
     const model = opt?.getAttribute('data-model') || null;
     setSelectedAgent(val);
-    window.dispatchEvent(new CustomEvent('agent:change',{detail:{agent_id:val, model}}));
+    // expose to other parts via store if needed; for now just setting agent in store
   }
 
   async function handleRefreshCollections(){
-    try{
-      const res = await fetch('/collections');
-      if(!res.ok) throw new Error('no_col');
-      const j = await res.json();
-      const cols = Array.isArray(j) ? j : j.collections || [];
-      // emit event so other modules can pick it up
-      window.dispatchEvent(new CustomEvent('collections:loaded',{detail:cols}));
-    }catch(e){
-      window.dispatchEvent(new CustomEvent('collections:loaded',{detail:[]}));
-    }
+    const cols = await refreshCollections();
+    // future: store collections in global store or notify components via store
+    return cols;
   }
 
-  function handleUpload(){
-    const input = document.createElement('input'); input.type='file'; input.multiple=false; input.accept='*/*';
-    input.onchange = async ()=>{
-      const file = input.files[0];
-      if(!file) return;
-      const form = new FormData(); form.append('file', file);
-      try{ await fetch('/ingest', { method:'POST', body: form }); alert('Uploaded'); }catch(e){ alert('Upload failed'); }
-    };
-    input.click();
-  }
+  // useSidebarLogic provides `handleUpload` — no local implementation
 
-  // listen for bulk upload requests from other pages
+  // keep legacy bulk-upload listener for now
   useEffect(() => {
     function onBulk(e: Event){ handleUpload(); }
     window.addEventListener('collections:bulk-upload', onBulk as EventListener);
     return () => window.removeEventListener('collections:bulk-upload', onBulk as EventListener);
-  }, []);
+  }, [handleUpload]);
+
+  // debounce filter input
+  useEffect(() => {
+    const t = setTimeout(() => setFilterText(rawFilter), 250);
+    return () => clearTimeout(t);
+  }, [rawFilter]);
 
   return (
     <div className="flex flex-col">
@@ -141,12 +65,12 @@ export default function Sidebar() {
         </button>
       </div>
 
-      <input id="convFilter" placeholder="Search…" className="mt-3 w-full px-3 py-2 rounded-md border border-gray-200 bg-white text-sm input" value={filterText} onChange={(e)=>{ setFilterText(e.target.value); }} />
+      <input id="convFilter" placeholder="Search…" className="mt-3 w-full px-3 py-2 rounded-md border border-gray-200 bg-white text-sm input" value={rawFilter} onChange={(e)=>{ setRawFilter(e.target.value); }} />
 
       <div id="convList" className="mt-3 overflow-auto max-h-72">
         {conversations.length === 0 && <div className="text-gray-500 py-4">No conversations</div>}
         {conversations.filter(c=> !filterText || (c.title||'').toLowerCase().includes(filterText.toLowerCase())).slice(0,50).map(c => (
-          <div key={c.id} onClick={()=>renderConversationClick(c)} className="conv-item mb-2 hover:shadow-sm"> 
+          <div key={c.id} onClick={()=>renderConversationClick(c)} className={`conv-item mb-2 hover:shadow-sm ${selectedConversationId === c.id ? 'ring-2 ring-purple-400 rounded-md' : ''}`}> 
             <div className="avatar">{(c.title||'').charAt(0).toUpperCase() || 'C'}</div>
             <div style={{flex:1}}>
               <div className="conv-title">{c.title || ('Conversation '+(c.id||''))}</div>
@@ -168,7 +92,7 @@ export default function Sidebar() {
 
       <div className="mt-4">
         <button
-          onClick={() => window.dispatchEvent(new CustomEvent('navigate:collections'))}
+          onClick={() => setPage('collections')}
           className="w-full flex items-center px-3 py-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800"
         >
           <Database className="w-4 h-4 mr-2 text-gray-500" />

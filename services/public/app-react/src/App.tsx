@@ -5,9 +5,10 @@ import { Settings } from 'lucide-react';
 import SettingsModal from './components/SettingsModal';
 import ChatInterface from "./pages/ChatInterface";
 import KnowledgeBasePage from "./pages/KnowledgeBasePage";
+import useStore from './store/useStore';
 
 export default function App() {
-  const [page, setPage] = useState<'chat'|'collections'>('chat');
+  const { page, setPage, isSettingsOpen, setIsSettingsOpen } = useStore();
   const [isDark, setIsDark] = useState<boolean>(() => {
     try {
       const v = localStorage.getItem('vyre:theme');
@@ -33,21 +34,7 @@ export default function App() {
     } catch (e) {}
   }, [isDark]);
 
-  useEffect(() => {
-    function onNavigate(e: CustomEvent){ setPage('collections'); }
-    function onOpenChat(e: CustomEvent){ setPage('chat'); }
-    function onOpenSettings(e: CustomEvent){ setIsSettingsOpen(true); }
-    window.addEventListener('navigate:collections', onNavigate as EventListener);
-    window.addEventListener('open:chat', onOpenChat as EventListener);
-    window.addEventListener('open:settings', onOpenSettings as EventListener);
-    return () => {
-      window.removeEventListener('navigate:collections', onNavigate as EventListener);
-      window.removeEventListener('open:chat', onOpenChat as EventListener);
-      window.removeEventListener('open:settings', onOpenSettings as EventListener);
-    };
-  }, []);
-
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  // navigation and settings are handled via global store
 
   return (
     // toggle `dark` class by applying conditional className
@@ -87,7 +74,7 @@ export default function App() {
             <div className="mt-4 text-xs text-gray-400 pt-3 border-t flex items-center justify-between" style={{borderColor: isDark ? 'rgba(148,163,184,0.08)' : undefined}}>
               <span>Status: Ollama Ready</span>
               <button
-                onClick={() => window.dispatchEvent(new CustomEvent('open:settings'))}
+                onClick={() => setIsSettingsOpen(true)}
                 aria-label="Open settings"
                 className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
               >
