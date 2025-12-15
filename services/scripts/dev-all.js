@@ -49,16 +49,59 @@ async function main(){
   const root = path.join(__dirname, '..');
   // spawn via shell command strings for cross-platform reliability
   const backend = spawn('npm run dev', { cwd: root, stdio: 'inherit', shell: true });
-  const ui = spawn('npm --prefix public/app-react run dev', { cwd: root, stdio: 'inherit', shell: true });
+  // Wait for backend to be ready before starting UI to avoid proxy ECONNREFUSED
+  const http = require('http');
 
+  function waitForHealth(url, attempts = 60, interval = 500) {
+    return new Promise((resolve, reject) => {
+      let tries = 0;
+      const timer = setInterval(() => {
+        tries++;
+        const req = http.get(url, (res) => {
+          if (res.statusCode && res.statusCode >= 200 && res.statusCode < 400) {
+            clearInterval(timer);
+            resolve();
+          } else {
+            if (tries >= attempts) {
+              clearInterval(timer);
+              reject(new Error('health check failed: status ' + res.statusCode));
+            }
+          }
+          res.on('data', () => {});
+          res.on('end', () => {});
+        });
+        req.on('error', () => {
+          if (tries >= attempts) {
+            clearInterval(timer);
+            reject(new Error('health check failed (error)'));
+          }
+        });
+        req.setTimeout(interval - 50, () => req.destroy());
+      }, interval);
+    });
+  }
+
+  let ui;
   function shutdown(code){
     try{ backend.kill(); }catch(e){}
-    try{ ui.kill(); }catch(e){}
+    try{ if (ui) ui.kill(); }catch(e){}
     process.exit(code||0);
   }
 
   backend.on('close', (c)=>{ console.log('backend exited', c); shutdown(c); });
-  ui.on('close', (c)=>{ console.log('ui exited', c); shutdown(c); });
+
+  (async () => {
+    try {
+      console.log('Waiting for backend health...');
+      await waitForHealth('http://127.0.0.1:3000/health', 120, 500);
+      console.log('Backend healthy — starting UI');
+      ui = spawn('npm --prefix public/app-react run dev', { cwd: root, stdio: 'inherit', shell: true });
+      ui.on('close', (c)=>{ console.log('ui exited', c); shutdown(c); });
+    } catch (e) {
+      console.error('Failed waiting for backend health:', e);
+      shutdown(1);
+    }
+  })();
 
   process.on('SIGINT', ()=> shutdown(0));
   process.on('SIGTERM', ()=> shutdown(0));
