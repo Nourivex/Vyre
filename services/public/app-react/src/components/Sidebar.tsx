@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from 'react-dom';
-import { Plus, User, Server, Database, Settings, Moon, Sun, Search, FolderPlus, MoreHorizontal, Edit3, Share2, Trash2, LayoutPanelLeft, MessageSquare, Link } from 'lucide-react';
+import { Plus, User, Server, Database, Settings, Moon, Sun, Search, FolderPlus, MoreHorizontal, Edit3, Share2, Trash2, LayoutPanelLeft, MessageSquare, Link, X } from 'lucide-react';
 import { FaTwitter, FaLinkedin, FaReddit } from 'react-icons/fa';
 import { Conversation } from "../types/api";
 import useStore from "../store/useStore";
@@ -461,7 +461,7 @@ export default function Sidebar({ isDark, setIsDark, setIsSettingsOpen }: Props)
             {shareTarget && createPortal(
                 <div className="fixed inset-0 z-50 flex items-center justify-center">
                     <div className="absolute inset-0 bg-black/40" onClick={() => setShareTarget(null)} />
-                    <div className={`relative z-10 w-full max-w-lg p-6 rounded-xl ${isDark ? 'bg-gray-900 text-gray-100' : 'bg-white text-gray-900'} border` }>
+                    <div className={`relative z-10 w-full max-w-full sm:max-w-lg p-4 sm:p-6 rounded-lg sm:rounded-xl mx-4 sm:mx-0 ${isDark ? 'bg-gray-900 text-gray-100' : 'bg-white text-gray-900'} border overflow-hidden` }>
                         <div className="flex items-start justify-between">
                             <div>
                                 <div className="text-xl font-semibold mb-1">Share Conversation</div>
@@ -470,35 +470,35 @@ export default function Sidebar({ isDark, setIsDark, setIsSettingsOpen }: Props)
                             <button onClick={() => setShareTarget(null)} className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"><X className="w-4 h-4" /></button>
                         </div>
 
-                        <div className="mt-4 p-4 rounded-md border bg-gray-50 dark:bg-gray-800">
+                        <div className="mt-4 p-4 rounded-md border bg-gray-50 dark:bg-gray-800 max-h-40 overflow-auto">
                             <div className="text-sm font-medium mb-2">Preview</div>
                             <div className="text-sm text-gray-700 dark:text-gray-200">{useStore.getState().conversations?.find(c => c.id === shareTarget)?.title || 'Untitled Conversation'}</div>
                         </div>
 
-                        <div className="mt-6 flex items-center justify-between">
-                            <div className="flex gap-3">
-                                <button onClick={() => copyShareLink(shareTarget)} className="flex items-center gap-2 px-4 py-3 rounded-full bg-white border shadow-sm hover:shadow-md">
+                        <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            <div className="flex flex-wrap gap-3 w-full sm:w-auto">
+                                <button onClick={() => copyShareLink(shareTarget)} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-white border shadow-sm hover:shadow-md">
                                     <Link className="w-4 h-4" />
                                     <div className="text-xs">Copy link</div>
                                 </button>
 
-                                <button onClick={() => openShareWindow(`https://twitter.com/intent/tweet?text=${encodeURIComponent(buildShareUrl())}`)} className="flex items-center gap-2 px-4 py-3 rounded-full bg-white border shadow-sm hover:shadow-md">
-                                    <X className="w-4 h-4" />
+                                <button onClick={() => openShareWindow(`https://twitter.com/intent/tweet?text=${encodeURIComponent(buildShareUrl())}`)} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-white border shadow-sm hover:shadow-md">
+                                    <FaTwitter className="w-4 h-4" />
                                     <div className="text-xs">X</div>
                                 </button>
 
-                                <button onClick={() => openShareWindow(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(buildShareUrl())}`)} className="flex items-center gap-2 px-4 py-3 rounded-full bg-white border shadow-sm hover:shadow-md">
-                                    <Linkedin className="w-4 h-4" />
+                                <button onClick={() => openShareWindow(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(buildShareUrl())}`)} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-white border shadow-sm hover:shadow-md">
+                                    <FaLinkedin className="w-4 h-4" />
                                     <div className="text-xs">LinkedIn</div>
                                 </button>
 
-                                <button onClick={() => openShareWindow(`https://www.reddit.com/submit?url=${encodeURIComponent(buildShareUrl())}`)} className="flex items-center gap-2 px-4 py-3 rounded-full bg-white border shadow-sm hover:shadow-md">
-                                    <Reddit className="w-4 h-4" />
+                                <button onClick={() => openShareWindow(`https://www.reddit.com/submit?url=${encodeURIComponent(buildShareUrl())}`)} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-white border shadow-sm hover:shadow-md">
+                                    <FaReddit className="w-4 h-4" />
                                     <div className="text-xs">Reddit</div>
                                 </button>
                             </div>
 
-                            <div className="text-xs text-gray-400">Share safely — link expires never</div>
+                            <div className="text-xs text-gray-400 text-left sm:text-right">Share safely — link expires never</div>
                         </div>
                     </div>
                 </div>,

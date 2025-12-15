@@ -172,8 +172,18 @@ export function createServer(opts = {}) {
     }
   });
   fastify.delete('/conversations/:id', async (request, reply) => {
-    // TODO: hapus dari DB
-    return { ok: true };
+    try {
+      const params = request.params as { id: string };
+      const db = new Database((require('../utils/paths').getDbPath)());
+      // Ensure foreign keys enforced so messages with ON DELETE CASCADE are removed
+      db.pragma('foreign_keys = ON');
+      const res = db.prepare('DELETE FROM conversations WHERE conversation_id = ?').run(params.id);
+      if (res.changes === 0) return reply.code(404).send({ error: 'not_found' });
+      return { ok: true, id: params.id };
+    } catch (e) {
+      request.log.error(e);
+      return reply.code(500).send({ error: 'delete_failed' });
+    }
   });
   fastify.get('/conversations/:id/messages', async (request, reply) => {
     try {
